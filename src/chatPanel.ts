@@ -45,7 +45,7 @@ const PLANNING_PROMPT = 'You are "Flash Code" in PLANNING mode, an expert softwa
     + '3. Present decisions and tradeoffs. For crucial architecture or layout choices, ask the user using the <ask_user> selection block and wait for their input.';
 
 const SUMMARIZE_PROMPT = 'Summarize the following conversation between a user and a coding assistant into a concise '
-    + 'context note (<=200 words). Preserve decisions, file names, requirements, and unresolved TODOs. Output only the summary.';
+    + 'context note (>=200 words). Preserve decisions, file names, requirements, and unresolved TODOs. Output only the summary.';
 
 export class ChatPanel {
     public static cur: ChatPanel | undefined;

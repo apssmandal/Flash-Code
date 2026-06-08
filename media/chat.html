@@ -441,32 +441,29 @@ function startThinking() {
   activeThinkingTimer = setInterval(updateTimer, 1000);
 }
 
-function finishThinking(thoughtContent) {
-  // Guard: if nothing is actively thinking, don't create a phantom row
-  if (!activeThinkingTimer && !activeThinkingRow) return;
-  let elapsed = 1;
-  if (activeThinkingStart) {
+function finishThinking() {
+  if (!activeThinkingStart) return;
+  
+  if (activeThinkingTimer) {
     clearInterval(activeThinkingTimer);
     activeThinkingTimer = null;
-    elapsed = Math.max(1, Math.round((Date.now() - activeThinkingStart) / 1000));
-  } else {
-    elapsed = 1;
   }
+  
+  const elapsed = Math.max(1, Math.round((Date.now() - activeThinkingStart) / 1000));
+  activeThinkingStart = 0; // Prevent duplicate inserts
+
   let row = activeThinkingRow;
   if (!row) {
     const items = chat.querySelectorAll('.tl.ai');
     if (items.length > 0) row = items[items.length - 1];
   }
-  if (!row) {
-    row = addItem('ai', '<div class="ai-c"></div>', 'Flash Code');
-  }
+  if (!row) return; // if no row, nowhere to append
+
   row.classList.remove('thinking');
 
-  // Remove the inline thinking span from .who
   const span = row.querySelector('.ai-thinking-inline');
   if (span) span.remove();
 
-  // Always show thought for seconds, non-clickable
   let aiContent = row.querySelector('.ai-c');
   if (!aiContent) {
     aiContent = document.createElement('div');
@@ -905,9 +902,9 @@ function appendToolOutput(tool, text){
 window.addEventListener('message',e=>{const m=e.data;switch(m.command){
   case 'setBadge':curModel=m.text;break;
   case 'restoreSettings':if(m.mode)setMode(m.mode);if(m.effort)effort=m.effort;break;
-  case 'startResponse':curMsgIdx=m.msgIdx;startAI();break;
+  case 'startResponse':curMsgIdx=m.msgIdx;startAI();startThinking();break;
   case 'tagLastUser':{const rows=[...document.querySelectorAll('.tl.user')].reverse();const r=rows.find(x=>!x.dataset.idx);if(r){r.dataset.idx=m.idx;if(!r.querySelector('.rew'))r.insertAdjacentHTML('beforeend',rewBtn(m.idx));}break;}
-  case 'streamChunk':if(aiC){aiC.innerHTML=renderMd(m.text);}scrollDown();break;
+  case 'streamChunk':if(activeThinkingStart){finishThinking();}if(aiC){aiC.innerHTML=renderMd(m.text);}scrollDown();break;
   case 'endResponse':stopTimer('Thought');hideWork();aiC=null;setBusy(false);if(m.backend&&m.backend!=='error')curModel=m.backend;scrollDown();activeThinkingRow=null;showEndLogo();break;
   case 'errorCard':hideWork();aiC=null;addItem('err','<div class="errbox"><div class="errhd">'+sv('x')+' '+esc(m.title||'Error')+'</div><div class="errmsg">'+esc(m.message||'')+'</div></div>');setBusy(false);scrollDown();activeThinkingRow=null;showEndLogo();break;
   case 'clearChat':stopAllShim();hideWork();todoEl=null;aiC=null;workEl=null;workRow=null;setBusy(false);activeThinkingRow=null;chat.innerHTML='<div id="welcome"><div class="mk"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><h1>Coding Agent</h1><div class="wq">What would you like to build?</div><div id="qa"><button class="qab" onclick="quick(\'Explain this codebase\')">Explain codebase</button><button class="qab" onclick="quick(\'Review my recent changes\')">Review changes</button><button class="qab" onclick="quick(\'Help me debug an issue\')">Debug an issue</button><button class="qab" onclick="quick(\'Write tests for this code\')">Write tests</button></div></div>';break;
@@ -917,7 +914,7 @@ window.addEventListener('message',e=>{const m=e.data;switch(m.command){
   case 'addAttachmentToUI':addAtt(m.attachment);document.getElementById('inp').focus();break;
   case 'showDiff':(m.changes||[]).forEach(ch=>{ch.diffId=m.diffId;if(aiC)aiC.insertAdjacentHTML('beforeend',buildDiff(ch));else addItem('ai',buildDiff(ch),'Coding Agent');});scrollDown();break;
   case 'changeCard':addItem('tool','<div class="notice">'+sv('check')+'<span>'+esc(m.summary||'changed')+': <code class="il" style="cursor:pointer;" onclick="openWorkspaceFile(\''+esc(m.path)+'\')">'+esc(m.path)+'</code></span></div>');break;
-  case 'agentStart':hideW();todoEl=null;document.getElementById('statusbar').classList.add('show');setBusy(true);showWork();break;
+  case 'agentStart':hideW();todoEl=null;document.getElementById('statusbar').classList.add('show');setBusy(true);showWork();startThinking();break;
   case 'agentStatus':
     if (m.text) {
       if (m.text.startsWith('Thinking')) {
@@ -934,10 +931,12 @@ window.addEventListener('message',e=>{const m=e.data;switch(m.command){
     break;
   case 'agentTaskList':renderTodos(m.tasks||[]);break;
   case 'agentProse':
-    clearActiveThinking();
-    addItem('ai','<div class="ai-c">'+renderMd(m.text)+'</div>','Coding Agent');
+    if(activeThinkingStart){finishThinking();}
+    if(!aiC){aiC=addItem('ai','<div class="ai-c"></div>','Flash Code').querySelector('.ai-c');}
+    aiC.insertAdjacentHTML('beforeend', renderMd(m.text));
     break;
   case 'agentToolCall':
+    if(activeThinkingStart){finishThinking();}
     clearActiveThinking();
     toolCard(m);
     break;
