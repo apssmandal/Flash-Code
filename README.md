@@ -2,10 +2,10 @@
 
 [![Visual Studio Marketplace](https://img.shields.io/badge/Marketplace-Flash%20Code-blueviolet?style=for-the-badge&logo=visual-studio-code)](https://marketplace.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Gemini Free Tier](https://img.shields.io/badge/Gemini%20API-Free%20Tier-orange?style=for-the-badge&logo=google-gemini)](https://ai.google.dev/)
+[![Gemini Free Tier](https://img.shields.io/badge/Gemini%20API-Free%20Tier-orange?style=for-the-badge&logo=google-gemini)](https://aistudio.google.com/api-keys)
 [![Ollama Support](https://img.shields.io/badge/Ollama-Local%20Models-darkblue?style=for-the-badge&logo=ollama)](https://ollama.com/)
 
-**Flash Code** is an open-source, Claude Code-style autonomous AI coding assistant running directly inside VS Code. It is built to offer **high-efficiency, zero-cost coding** by leveraging Gemini's powerful free-tier models without hitting rate limits. By multiplexing a pool of multiple Gemini API keys in a smart round-robin wheel, it handles request throttling, rate-limit cooldowns, and automatic recovery seamlessly.
+**Flash Code** is an open-source, autonomous AI coding assistant running directly inside VS Code. It is built to offer **high-efficiency, zero-cost coding** by leveraging Gemini's powerful free-tier models without hitting rate limits. By multiplexing a pool of multiple Gemini API keys in a smart round-robin wheel, it handles request throttling, rate-limit cooldowns, and automatic recovery seamlessly.
 
 ---
 
