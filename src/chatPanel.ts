@@ -428,8 +428,9 @@ export class ChatPanel {
             const userMsgIdx = this._h.length - 1;
             this.post({ command: 'tagLastUser', idx: userMsgIdx });
             this.post({ command: 'agentStart' });
+            const autonomousThinkNote = this._thinking ? '\n\n[SYSTEM NOTE: The user has enabled "Think" mode. You MUST think deeply and systematically step-by-step inside <think>...</think> before executing tools or making decisions to ensure the highest quality outcome.]' : '';
             const mappedHistory = this._mapHistoryForLLM(this._h);
-            const finalText = await this._agent.run(fullUser, mappedHistory.slice(0, -1));
+            const finalText = await this._agent.run(fullUser + autonomousThinkNote, mappedHistory.slice(0, -1));
             if (this._gen !== gen) return; // cancelled / superseded
             if (finalText) this._h.push({ role: 'assistant', content: finalText });
             if (this._h.length > 12) await this._summarize(this._h.length);
@@ -458,7 +459,7 @@ export class ChatPanel {
             }
         }
 
-        const thinkNote = this._thinking ? '\n\nThink step by step inside <think>...</think> before answering.' : '';
+        const thinkNote = this._thinking ? '\n\nIMPORTANT: Think deeply and thoroughly step-by-step inside <think>...</think> before formulating your final answer. Analyze edge cases, architectural impacts, and alternative solutions to arrive at the absolute best result.' : '';
         const sys = mp + thinkNote
             + (this._summary ? '\n\nConversation summary so far:\n' + this._summary : '')
             + treeBlock + fileContext

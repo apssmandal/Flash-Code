@@ -444,15 +444,13 @@ function startThinking() {
 function finishThinking(thoughtContent) {
   // Guard: if nothing is actively thinking, don't create a phantom row
   if (!activeThinkingTimer && !activeThinkingRow) return;
-  const content = thoughtContent || latestThoughtText || '';
   let elapsed = 1;
-  if (activeThinkingTimer) {
+  if (activeThinkingStart) {
     clearInterval(activeThinkingTimer);
     activeThinkingTimer = null;
     elapsed = Math.max(1, Math.round((Date.now() - activeThinkingStart) / 1000));
   } else {
-    const words = content.trim().split(/\s+/).length;
-    elapsed = Math.max(1, Math.round(words / 30));
+    elapsed = 1;
   }
   let row = activeThinkingRow;
   if (!row) {
@@ -460,7 +458,7 @@ function finishThinking(thoughtContent) {
     if (items.length > 0) row = items[items.length - 1];
   }
   if (!row) {
-    row = addItem('ai', '<div class="ai-c"></div>', 'Coding Agent');
+    row = addItem('ai', '<div class="ai-c"></div>', 'Flash Code');
   }
   row.classList.remove('thinking');
 
@@ -468,20 +466,21 @@ function finishThinking(thoughtContent) {
   const span = row.querySelector('.ai-thinking-inline');
   if (span) span.remove();
 
-  // Insert a collapsible "Thought for Xs" block INSIDE the .ai-c content area
-  if (content.trim()) {
-    let aiContent = row.querySelector('.ai-c');
-    if (!aiContent) {
-      aiContent = document.createElement('div');
-      aiContent.className = 'ai-c';
-      row.appendChild(aiContent);
-    }
-    const wrapper = document.createElement('div');
-    wrapper.className = 'thought-block';
-    wrapper.innerHTML = '<div class="thought-header" onclick="this.parentElement.classList.toggle(\'open\'); scrollDown();">Thought for ' + elapsed + 's ' + sv('chevron') + '</div>'
-      + '<div class="thought-body">' + esc(content.trim()) + '</div>';
-    aiContent.insertBefore(wrapper, aiContent.firstChild);
+  // Always show thought for seconds, non-clickable
+  let aiContent = row.querySelector('.ai-c');
+  if (!aiContent) {
+    aiContent = document.createElement('div');
+    aiContent.className = 'ai-c';
+    row.appendChild(aiContent);
   }
+  const wrapper = document.createElement('div');
+  wrapper.className = 'thought-time';
+  wrapper.style.fontSize = '12px';
+  wrapper.style.color = 'var(--dim)';
+  wrapper.style.marginBottom = '8px';
+  wrapper.innerText = 'Thought for ' + elapsed + 's';
+  aiContent.insertBefore(wrapper, aiContent.firstChild);
+
   latestThoughtText = '';
   scrollDown();
 }
@@ -534,15 +533,7 @@ function addItem(kind,html,who){hideW();hideEndLogo();const r=document.createEle
 
 /* ---- markdown ---- */
 function renderMd(raw){let clar='';raw=raw.replace(/<ask_user>([\s\S]*?)<\/ask_user>/g,(_,j)=>{clar+=buildClar(j,'chat');return ''});
-  let thoughts = '';
-  raw = raw.replace(/(^|\n)<think\b[^>]*>([\s\S]*?)<\/think>/g, (_, nl, t) => {
-    if (!t.trim()) return nl;
-    const words = t.trim().split(/\s+/).length;
-    const duration = Math.max(1, Math.round(words / 30));
-    thoughts += nl + '<div class="thought-block"><div class="thought-header" onclick="this.parentElement.classList.toggle(\'open\'); scrollDown();">Thought for ' + duration + 's ' + sv('chevron') + '</div>'
-      + '<div class="thought-body">' + esc(t.trim()) + '</div></div>';
-    return nl;
-  });
+  raw = raw.replace(/(^|\n)<think\b[^>]*>([\s\S]*?)<\/think>/g, '$1');
   raw = raw.replace(/(^|\n)<think\b[^>]*>[\s\S]*$/, '$1');
   // file edits are shown as diff cards, never as streamed code: strip them
   raw=raw.replace(/(^|\n)<create[^>]*>[\s\S]*?<\/create>/g,'$1').replace(/(^|\n)<edit[^>]*>[\s\S]*?<\/edit>/g,'$1');
@@ -556,7 +547,7 @@ function renderMd(raw){let clar='';raw=raw.replace(/<ask_user>([\s\S]*?)<\/ask_u
     const lines=code.split('\n');const nums=lines.map((_,i)=>'<span>'+(i+1)+'</span>').join('');
     html+='<div class="cb"><div class="cb-hd"><span class="cb-fp">'+(lang||'code')+'</span><button class="cb-btn" onclick="expandCode(this,\''+(lang||'txt')+'\')">Expand</button><button class="cb-btn" onclick="cp(this)">Copy</button></div><div class="cb-body"><div class="cb-nums">'+nums+'</div><div class="cb-code">'+esc(code)+'</div></div></div>';
     last=rx.lastIndex;}
-  if(last<raw.length)html+=mdText(raw.slice(last));return thoughts+html+clar;}
+  if(last<raw.length)html+=mdText(raw.slice(last));return html+clar;}
 function mdText(t) {
   const inline = s => s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code class="il">$1</code>').replace(/\[([^\]]+)\]\(([^)]+)\)/g,(_,t,h)=>'<a href="#" class="file-link" onclick="event.preventDefault();openWorkspaceFile(\''+h+'\')">'+t+'</a>');
   
