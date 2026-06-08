@@ -1,0 +1,181 @@
+{
+  "name": "flash-code",
+  "displayName": "Flash Code",
+  "description": "AI coding assistant — Claude Code-style agentic chat powered by round-robin free-tier Gemini API keys and Ollama",
+  "version": "1.0.0",
+  "publisher": "Animixer",
+  "author": {
+    "name": "Arpan Mandal"
+  },
+  "icon": "resources/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "flash-code-sidebar",
+          "title": "Flash Code",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "flash-code-sidebar": [
+        {
+          "id": "flashCode.sessions",
+          "name": "Sessions",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "flashCode.open",
+        "title": "Flash Code: Open"
+      },
+      {
+        "command": "flashCode.newChat",
+        "title": "Flash Code: New Chat"
+      },
+      {
+        "command": "flashCode.switchBackend",
+        "title": "Flash Code: Switch Backend"
+      },
+      {
+        "command": "flashCode.switchModel",
+        "title": "Flash Code: Switch Model"
+      },
+      {
+        "command": "flashCode.sendFile",
+        "title": "Flash Code: Send Current File"
+      }
+    ],
+    "menus": {},
+    "keybindings": [
+      {
+        "command": "flashCode.open",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a"
+      }
+    ],
+    "configuration": {
+      "title": "Flash Code",
+      "properties": {
+        "flashCode.defaultBackend": {
+          "type": "string",
+          "default": "gemini",
+          "enum": [
+            "ollama",
+            "gemini"
+          ],
+          "description": "Default AI backend"
+        },
+        "flashCode.ollama.url": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama server URL"
+        },
+        "flashCode.ollama.model": {
+          "type": "string",
+          "default": "qwen3-coder",
+          "description": "Ollama model"
+        },
+        "flashCode.ollama.temperature": {
+          "type": "number",
+          "default": 0.2,
+          "description": "Temperature setting for local Ollama models (lower is more deterministic)"
+        },
+        "flashCode.ollama.numCtx": {
+          "type": "integer",
+          "default": 4096,
+          "description": "Context window size (num_ctx) for local Ollama models (in tokens)"
+        },
+        "flashCode.gemini.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Single Gemini API key (fallback)"
+        },
+        "flashCode.gemini.apiKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Multiple keys \u2014 round-robin per request"
+        },
+        "flashCode.gemini.model": {
+          "type": "string",
+          "default": "gemini-2.5-flash",
+          "enum": [
+            "gemini-2.5-flash",
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite",
+            "gemini-3.5-flash"
+          ],
+          "enumDescriptions": [
+            "Gemini 2.5 Flash — balanced, higher free-tier RPM",
+            "Gemini 3 Flash — next-generation fast model",
+            "Gemini 3.1 Flash Lite — highly efficient, fast reasoning model",
+            "Gemini 3.5 Flash — latest, most capable Flash model"
+          ],
+          "description": "Gemini model"
+        },
+        "flashCode.autoApprove": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-approve code changes"
+        },
+        "flashCode.mode": {
+          "type": "string",
+          "default": "ask",
+          "enum": [
+            "ask",
+            "auto-edit",
+            "plan",
+            "autonomous"
+          ],
+          "enumDescriptions": [
+            "Ask before edit — review every change",
+            "Edit automatically — apply edits without prompting",
+            "Plan mode — analyze and plan, no file writes",
+            "Auto Mode — fully autonomous agent execution"
+          ],
+          "description": "Default interaction mode"
+        },
+        "flashCode.effort": {
+          "type": "string",
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "description": "Default effort / token-thinking budget"
+        },
+        "flashCode.rateLimit.requestsPerMinute": {
+          "type": "integer",
+          "default": 15,
+          "description": "Global rate limit for all keys combined (requests per minute) to prevent IP-based rate limiting on the free tier"
+        }
+      }
+    }
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

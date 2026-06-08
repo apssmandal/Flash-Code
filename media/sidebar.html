@@ -1,0 +1,200 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+:root{
+  --fg:var(--vscode-foreground);
+  --bg:var(--vscode-sideBar-background,#1b1b1f);
+  --dim:var(--vscode-descriptionForeground);
+  --border:var(--vscode-panel-border,rgba(128,128,128,.16));
+  --accent:var(--vscode-textLink-foreground,#4ea1ff);
+  --hover:var(--vscode-list-hoverBackground,rgba(128,128,128,.08));
+  --btnbg:var(--vscode-button-background);
+  --btnfg:var(--vscode-button-foreground);
+  --inbg:var(--vscode-input-background);
+  --infg:var(--vscode-input-foreground);
+  --inbd:var(--vscode-input-border,rgba(128,128,128,.2));
+  --shadow:rgba(0,0,0,0.18);
+  --mono:var(--vscode-editor-font-family,"Cascadia Code",Consolas,monospace);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit','Inter',var(--vscode-font-family),sans-serif;font-size:13px;color:var(--fg);background:var(--bg);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block}
+#hd{display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.12)}
+#hd .t{flex:1;font-weight:600;font-size:14px;letter-spacing:0.02em}
+.icobtn{background:none;border:none;color:var(--dim);cursor:pointer;font-size:15px;padding:5px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.icobtn:hover{color:var(--fg);background:var(--hover)}
+#new{display:flex;align-items:center;gap:8px;margin:12px 14px 6px;padding:8px 12px;background:var(--btnbg);color:var(--btnfg);border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;width:calc(100% - 28px);justify-content:center;box-shadow:0 2px 6px var(--shadow);transition:all 0.2s ease}
+#new:hover{opacity:.95;transform:translateY(-0.5px)}
+#new span{display:inline-flex}
+#search{margin:4px 14px 10px;width:calc(100% - 28px);background:var(--inbg);color:var(--infg);border:1px solid var(--inbd);border-radius:8px;padding:8px 11px;font-size:12px;outline:none;transition:border-color 0.2s}
+#search:focus{border-color:var(--accent)}
+#list{flex:1;overflow-y:auto;padding:0 10px 14px}
+.item{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:6px;border:1px solid transparent;background:rgba(128,128,128,0.03);transition:all 0.2s cubic-bezier(0.16,1,0.3,1)}
+.item:hover{background:var(--hover);border-color:var(--border);transform:translateY(-0.5px)}
+.item .ti{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;font-size:12.5px}
+.item .dt{font-size:10px;color:var(--dim);margin-top:2px;font-weight:400}
+.item .acts{display:none;gap:4px}
+.item:hover .acts{display:flex}
+.empty{color:var(--dim);text-align:center;padding:32px 14px;font-size:12.5px}
+
+/* settings panel */
+#settings{position:absolute;inset:0;background:var(--bg);transform:translateX(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);display:flex;flex-direction:column;z-index:100}
+#settings.show{transform:translateX(0)}
+#settings .sh{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.12);font-weight:600;font-size:14px}
+#settings .body{flex:1;overflow-y:auto;padding:14px}
+.grp{margin-bottom:18px}
+.grp label{display:block;font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-weight:600}
+.sublbl{font-size:10px;color:var(--dim);margin-top:6px;margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:0.02em}
+.pill{display:block;width:100%;text-align:left;background:rgba(128,128,128,0.04);border:1px solid var(--inbd);color:var(--fg);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:12px;margin-bottom:6px;transition:all 0.2s ease}
+.pill:hover{background:var(--hover);border-color:var(--accent)}
+.pill.on{border-color:var(--accent);background:rgba(78,161,255,0.08);color:var(--accent);font-weight:600}
+.keyrow{display:flex;gap:6px;align-items:center;margin-bottom:6px;width:100%}
+.keyrow input{flex:1;background:var(--inbg);color:var(--infg);border:1px solid var(--inbd);border-radius:6px;padding:6px 10px;font-size:11px;font-family:var(--mono);outline:none;transition:border-color 0.2s}
+.keyrow input:focus{border-color:var(--accent)}
+.keyrow .st{font-size:12px;display:inline-flex}
+.keyrow .rm{background:none;border:none;color:var(--vscode-errorForeground,#f85149);cursor:pointer;font-size:13px;padding:4px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center}
+.keyrow .rm:hover{background:var(--hover)}
+.addk{background:none;border:1px dashed var(--inbd);color:var(--dim);border-radius:6px;padding:6px;cursor:pointer;font-size:12px;width:100%;transition:all 0.2s}
+.addk:hover{color:var(--fg);border-color:var(--accent);background:var(--hover)}
+input.txt,select.txt{width:100%;background:var(--inbg);color:var(--infg);border:1px solid var(--inbd);border-radius:6px;padding:7px 10px;font-size:12px;outline:none;margin-bottom:8px;transition:border-color 0.2s}
+input.txt:focus,select.txt:focus{border-color:var(--accent)}
+#save{width:100%;background:var(--btnbg);color:var(--btnfg);border:none;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;font-weight:600;margin-top:10px;box-shadow:0 2px 8px var(--shadow);transition:opacity 0.2s}
+#save:hover{opacity:.95}
+.note{font-size:11px;color:var(--dim);margin-top:5px;line-height:1.4}
+</style></head><body>
+<div id="hd"><span class="t">Flash Code</span><button class="icobtn" id="gear" title="Settings"></button></div>
+<button id="new" onclick="V.postMessage({command:'newSession'})"><span id="newic"></span> New Session</button>
+<input id="search" placeholder="Search sessions..." oninput="render()"/>
+<div id="list"><div class="empty">No chats yet.</div></div>
+
+<div id="settings">
+  <div class="sh"><button class="icobtn" id="backbtn" onclick="closeSettings()"></button><span>Settings</span></div>
+  <div class="body">
+    <div class="grp"><label>Model</label>
+      <button class="pill" data-model="gemini-2.5-flash" onclick="pickModel(this)">Gemini 2.5 Flash</button>
+      <button class="pill" data-model="gemini-3-flash-preview" onclick="pickModel(this)">Gemini 3 Flash</button>
+      <button class="pill" data-model="gemini-3.1-flash-lite" onclick="pickModel(this)">Gemini 3.1 Flash Lite</button>
+      <button class="pill" data-model="gemini-3.5-flash" onclick="pickModel(this)">Gemini 3.5 Flash</button>
+      <button class="pill" data-model="ollama" onclick="pickModel(this)">Ollama (local)</button>
+    </div>
+    <div class="grp"><label>Gemini API Keys (round-robin)</label>
+      <div id="keys"></div>
+      <button class="addk" onclick="addKey('')">&#43; Add key</button>
+      <div class="note">Multiple keys rotate automatically to dodge the ~15 req/min free-tier limit.</div>
+    </div>
+    <div class="grp" id="ollamaGrp" style="display:none"><label>Ollama Settings</label>
+      <div class="sublbl">Server URL</div>
+      <input class="txt" id="oUrl" placeholder="http://localhost:11434"/>
+      <div class="sublbl">Model Name</div>
+      <input class="txt" id="oModel" placeholder="qwen3-coder"/>
+      <div class="sublbl">Temperature</div>
+      <input class="txt" id="oTemp" type="number" step="0.1" min="0" max="1.5" placeholder="0.2"/>
+      <div class="sublbl">Context Length (tokens)</div>
+      <input class="txt" id="oNumCtx" type="number" step="1024" min="2048" placeholder="4096"/>
+    </div>
+    <div class="grp"><label>Default Mode</label>
+      <select class="txt" id="dMode"><option value="ask">Ask before edit</option><option value="auto-edit">Edit automatically</option><option value="plan">Plan mode</option><option value="autonomous">Auto Mode</option></select>
+    </div>
+    <div class="grp"><label>Default Effort</label>
+      <select class="txt" id="dEffort"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">xHigh</option><option value="max">Max</option></select>
+    </div>
+    <div class="note">Theme follows VS Code automatically.</div>
+    <button id="save" onclick="saveSettings()">Save Settings</button>
+  </div>
+</div>
+
+<script>
+const V=acquireVsCodeApi();let sessions=[],curModel='gemini-2.5-flash',keyStatuses=[];
+const IC={
+gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+back:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+edit:'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+eyeOff:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'};
+
+function sv(n){return '<svg viewBox="0 0 24 24">'+(IC[n]||'')+'</svg>'}
+document.getElementById('gear').innerHTML=sv('gear');
+document.getElementById('newic').innerHTML=sv('plus');
+document.getElementById('backbtn').innerHTML=sv('back');
+
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function render(){const q=document.getElementById('search').value.toLowerCase();const list=document.getElementById('list');
+  const f=sessions.filter(s=>!q||(s.title||'').toLowerCase().includes(q));
+  if(!f.length){list.innerHTML='<div class="empty">'+(q?'No matches.':'No chats yet.')+'</div>';return;}
+  list.innerHTML=f.map(s=>'<div class="item" onclick="open_(\''+s.id+'\')"><div class="ti">'+esc(s.title||'New chat')+'<div class="dt">'+esc(s.date||'')+'</div></div><div class="acts"><button class="icobtn" title="Rename" onclick="event.stopPropagation();ren(\''+s.id+'\',\''+esc(s.title||'').replace(/\'/g,"")+'\')">'+sv('edit')+'</button><button class="icobtn" title="Delete" onclick="event.stopPropagation();del(\''+s.id+'\')">'+sv('trash')+'</button></div></div>').join('');}
+function open_(id){V.postMessage({command:'openSession',id})}
+function ren(id,title){V.postMessage({command:'renameSession',id,title})}
+function del(id){V.postMessage({command:'deleteSession',id})}
+
+document.getElementById('gear').onclick=()=>{document.getElementById('settings').classList.add('show');V.postMessage({command:'getSettings'})};
+function closeSettings(){document.getElementById('settings').classList.remove('show')}
+function pickModel(b){curModel=b.dataset.model;document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',p===b));document.getElementById('ollamaGrp').style.display=curModel==='ollama'?'block':'none'}
+function dot(c,title){return '<span class="st" title="'+(title||'')+'" style="width:9px;height:9px;border-radius:50%;background:'+c+';display:inline-block"></span>'}
+function statusIcon(st){if(!st)return dot('var(--vscode-charts-green,#3fb950)','Ready');if(st.status==='limited')return dot('var(--vscode-charts-yellow,#d7a700)','Rate-limited '+Math.ceil(st.cooldownMs/1000)+'s');if(st.status==='error')return dot('var(--vscode-charts-red,#f85149)','Error');return dot('var(--vscode-charts-green,#3fb950)','Ready')}
+
+function toggleVisibility(btn) {
+  const keyrow = btn.closest('.keyrow');
+  const input = keyrow.querySelector('input');
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.innerHTML = sv('eyeOff');
+  } else {
+    input.type = 'password';
+    btn.innerHTML = sv('eye');
+  }
+}
+
+function renderKeys(keys){
+  const box=document.getElementById('keys');
+  box.innerHTML=keys.map((k,i)=>'<div class="keyrow">'
+    +'<input type="password" value="'+esc(k)+'"/>'
+    +'<button class="icobtn eye-btn" onclick="toggleVisibility(this)" title="Toggle Visibility">'+sv('eye')+'</button>'
+    +statusIcon(keyStatuses[i])
+    +'<button class="rm" onclick="this.closest(\'.keyrow\').remove()">'+sv('x')+'</button>'
+    +'</div>').join('');
+}
+function addKey(v){
+  const box=document.getElementById('keys');
+  const d=document.createElement('div');
+  d.className='keyrow';
+  d.innerHTML='<input type="password" value="'+esc(v)+'"/>'
+    +'<button class="icobtn eye-btn" onclick="toggleVisibility(this)" title="Toggle Visibility">'+sv('eye')+'</button>'
+    +statusIcon(null)
+    +'<button class="rm" onclick="this.closest(\'.keyrow\').remove()">'+sv('x')+'</button>';
+  box.appendChild(d);
+}
+
+function saveSettings(){
+  const keys=[...document.querySelectorAll('#keys input')].map(i=>i.value.trim()).filter(Boolean);
+  V.postMessage({command:'saveSettings',settings:{
+    model:curModel,
+    apiKeys:keys,
+    ollamaUrl:document.getElementById('oUrl').value.trim(),
+    ollamaModel:document.getElementById('oModel').value.trim(),
+    ollamaTemp:document.getElementById('oTemp').value.trim(),
+    ollamaNumCtx:document.getElementById('oNumCtx').value.trim(),
+    defaultMode:document.getElementById('dMode').value,
+    defaultEffort:document.getElementById('dEffort').value
+  }});
+}
+
+window.addEventListener('message',e=>{const m=e.data;
+  if(m.command==='openSettings'){document.getElementById('settings').classList.add('show');V.postMessage({command:'getSettings'})}
+  else if(m.command==='sessionList'){sessions=m.sessions||[];render()}
+  else if(m.command==='settingsData'){
+    const s=m.settings;curModel=s.model;keyStatuses=m.keyStatuses||[];
+    document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',p.dataset.model===s.model));
+    document.getElementById('ollamaGrp').style.display=s.model==='ollama'?'block':'none';
+    document.getElementById('oUrl').value=s.ollamaUrl||'';
+    document.getElementById('oModel').value=s.ollamaModel||'';
+    document.getElementById('oTemp').value=s.ollamaTemp!==undefined?s.ollamaTemp:'0.2';
+    document.getElementById('oNumCtx').value=s.ollamaNumCtx!==undefined?s.ollamaNumCtx:'4096';
+    document.getElementById('dMode').value=s.defaultMode||'ask';document.getElementById('dEffort').value=s.defaultEffort||'medium';
+    renderKeys(s.apiKeys&&s.apiKeys.length?s.apiKeys:['']);}
+  else if(m.command==='keyStatusUpdate'){keyStatuses[m.status.idx]=m.status;const rows=document.querySelectorAll('#keys .keyrow .st');if(rows[m.status.idx])rows[m.status.idx].outerHTML=statusIcon(m.status);}
+});
+V.postMessage({command:'ready'});
+</script></body></html>
