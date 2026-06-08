@@ -132,7 +132,7 @@ body.vscode-light .tl::before{background:var(--accent)}
 #working-indicator .shw{font-size:15px;line-height:1.2;font-weight:500}
 .thinking-time{font-size:12px;color:var(--dim);font-weight:400;font-family:var(--vscode-font-family);letter-spacing:0.02em;margin-top:4px}
 .thought{font-size:12px;color:var(--dim);margin:6px 0;padding-left:10px;border-left:2px solid var(--accent);font-style:italic}
-/* Thinking text inline next to CODING AGENT label */
+/* Thinking text inline next to FLASH CODE label */
 .ai-thinking-inline{font-size:11px;color:var(--accent);font-weight:500;margin-left:8px;white-space:nowrap;letter-spacing:0.02em;text-transform:none;animation:fadeInLabel 0.25s ease}
 @keyframes fadeInLabel{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
 @keyframes spkpulse{
@@ -256,7 +256,7 @@ body.vscode-light .tl::before{background:var(--accent)}
 
 <div id="chat"><div id="welcome">
   <div class="mk"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
-  <h1>Coding Agent</h1><div class="wq">What would you like to build?</div>
+  <h1>Flash Code</h1><div class="wq">What would you like to build?</div>
   <div id="qa">
     <button class="qab" onclick="quick('Explain this codebase')">Explain codebase</button>
     <button class="qab" onclick="quick('Review my recent changes')">Review changes</button>
@@ -407,7 +407,7 @@ function startThinking() {
     }
   }
   if (!aiItem) {
-    aiItem = addItem('ai', '<div class="ai-c"></div>', 'Coding Agent');
+    aiItem = addItem('ai', '<div class="ai-c"></div>', 'Flash Code');
   }
   aiItem.classList.add('thinking');
   activeThinkingRow = aiItem;
@@ -417,7 +417,7 @@ function startThinking() {
   const old = aiItem.querySelector('.ai-thinking-inline');
   if (old) old.remove();
 
-  // Insert thinking text INLINE inside .who label ("CODING AGENT  Thinking for 0s")
+  // Insert thinking text INLINE inside .who label ("FLASH CODE  Thinking for 0s")
   const whoEl = aiItem.querySelector('.who');
   const span = document.createElement('span');
   span.className = 'ai-thinking-inline';
@@ -476,7 +476,7 @@ function finishThinking() {
   wrapper.style.color = 'var(--dim)';
   wrapper.style.marginBottom = '8px';
   wrapper.innerText = 'Thought for ' + elapsed + 's';
-  aiContent.insertBefore(wrapper, aiContent.firstChild);
+  row.insertBefore(wrapper, aiContent);
 
   latestThoughtText = '';
   scrollDown();
@@ -646,8 +646,8 @@ function attHtml(al){if(!al||!al.length)return '';return '<div class="uatts">'+a
 function addUser(t,idx,al){const r=addItem('user','<div class="ub">'+(t?esc(t):'')+attHtml(al)+'</div>'+(typeof idx==='number'&&idx>=0?rewBtn(idx):''),'You');if(typeof idx==='number')r.dataset.idx=idx;return r;}
 function preview(src){const mo=document.getElementById('imgmodal');mo.querySelector('img').src=src;mo.classList.add('show');}
 function closePreview(){document.getElementById('imgmodal').classList.remove('show');}
-function startAI(){const r=addItem('ai','<div class="ai-c"></div>','Coding Agent');aiC=r.querySelector('.ai-c');showWork();}
-function restoreAI(t){addItem('ai','<div class="ai-c">'+renderMd(t)+'</div>','Coding Agent');}
+function startAI(){const r=addItem('ai','<div class="ai-c"></div>','Flash Code');aiC=r.querySelector('.ai-c');showWork();}
+function restoreAI(t){addItem('ai','<div class="ai-c">'+renderMd(t)+'</div>','Flash Code');}
 
 const ST={send:'<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>',stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>'};
 function setBusy(b){busy=b;document.body.classList.toggle('agent-active', b);const s=document.getElementById('send');s.innerHTML='<svg viewBox="0 0 24 24">'+(b?ST.stop:ST.send)+'</svg>';s.title=b?'Stop':'Send';s.classList.toggle('stopping',b);}
@@ -758,7 +758,7 @@ function buildDiff(ch){const rows=ch.diff.map(r=>{
   return '<div class="diff" data-p="'+esc(ch.path)+'" data-diff-id="'+esc(ch.diffId || '')+'"><div class="diff-hd"><span class="ic">'+sv('edit')+'</span><span class="p" onclick="openWorkspaceFile(\''+esc(ch.path)+'\')">'+esc(ch.path)+'</span><span class="diff-bd">'+esc(ch.badge||'modified')+'</span></div><div class="diff-cols"><div class="diff-col">'+left+'</div><div class="diff-col">'+right+'</div></div>'+acts+'</div>';}
 function dAcc(b,a){const c=b.closest('.diff');V.postMessage({command:a?'acceptDiffAlways':'acceptDiff',path:c.dataset.p,diffId:c.dataset.diffId});c.querySelector('.diff-acts').outerHTML='<div class="applied-tag">'+sv('check')+'Accepted</div>';}
 function dRej(b){const c=b.closest('.diff');V.postMessage({command:'rejectDiff',path:c.dataset.p,diffId:c.dataset.diffId});c.querySelector('.diff-acts').outerHTML='<div class="applied-tag" style="color:var(--red)">'+sv('x')+'Rejected</div>';}
-function dTell(b){const c=b.closest('.diff');const t=prompt('Tell Coding Agent what to change instead:');if(t){V.postMessage({command:'tellClaude',path:c.dataset.p,text:t});c.querySelector('.diff-acts').outerHTML='<div class="applied-tag" style="color:var(--dim)">Sent feedback</div>';}}
+function dTell(b){const c=b.closest('.diff');const t=prompt('Tell Flash Code what to change instead:');if(t){V.postMessage({command:'tellClaude',path:c.dataset.p,text:t});c.querySelector('.diff-acts').outerHTML='<div class="applied-tag" style="color:var(--dim)">Sent feedback</div>';}}
 
 /* clarification */
 let clarN=0,activeClar=null;
@@ -768,7 +768,7 @@ function buildClar(json,ctx){let data;try{data=JSON.parse(json.trim())}catch{ret
   const id='clar'+(clarN++);activeClar=id;const bMode=qs.length===1&&!qs[0].multiSelect;
   if(bMode){const q=qs[0];const opts=(q.options||[]);
     const rows=opts.map((o,i)=>'<div class="bopt'+(i===0?' active':'')+'" data-i="'+i+'" onclick="clarPick(\''+id+'\','+i+')"><span class="num">'+(i+1)+'</span><div>'+optText(o)+'</div></div>').join('');
-    return '<div class="clar" id="'+id+'" data-ctx="'+ctx+'" data-mode="b" data-n="'+opts.length+'" data-act="0"><div class="clar-tabs"><span class="clar-tab on">'+esc(q.header||'Question')+'</span><button class="clar-x" onclick="clarCancel(\''+id+'\')">'+sv('x')+'</button></div><div class="clar-title">'+esc(q.question||'')+'</div>'+(q.code?'<div class="clar-code">'+esc(q.code)+'</div>':'')+(q.description?'<div class="clar-desc">'+esc(q.description)+'</div>':'')+'<div class="bwrap">'+rows+'</div><input class="btell" placeholder="Tell Coding Agent what to do instead" onkeydown="clarTell(event,\''+id+'\')"><div class="clar-hint">Press 1–'+opts.length+' or Enter · Esc to cancel</div></div>';}
+    return '<div class="clar" id="'+id+'" data-ctx="'+ctx+'" data-mode="b" data-n="'+opts.length+'" data-act="0"><div class="clar-tabs"><span class="clar-tab on">'+esc(q.header||'Question')+'</span><button class="clar-x" onclick="clarCancel(\''+id+'\')">'+sv('x')+'</button></div><div class="clar-title">'+esc(q.question||'')+'</div>'+(q.code?'<div class="clar-code">'+esc(q.code)+'</div>':'')+(q.description?'<div class="clar-desc">'+esc(q.description)+'</div>':'')+'<div class="bwrap">'+rows+'</div><input class="btell" placeholder="Tell Flash Code what to do instead" onkeydown="clarTell(event,\''+id+'\')"><div class="clar-hint">Press 1–'+opts.length+' or Enter · Esc to cancel</div></div>';}
   const tabs=qs.map((q,i)=>'<span class="clar-tab'+(i===0?' on':'')+'" onclick="clarTab(\''+id+'\','+i+')">'+esc(q.header||('Q'+(i+1)))+'</span>').join('');
   const bodies=qs.map((q,i)=>{const opts=(q.options||[]).concat([{label:'Other'}]).map(o=>{const inp=q.multiSelect?'checkbox':'radio';return '<label class="opt"><input type="'+inp+'" name="'+id+'_'+i+'" value="'+esc(optVal(o))+'" onchange="clarChg(\''+id+'\','+i+',this)"><div>'+optText(o)+'</div></label>';}).join('');
     return '<div class="clar-q" data-qi="'+i+'" style="display:'+(i===0?'block':'none')+'"><div class="qt">'+esc(q.question||'')+(q.multiSelect?' <span class="des">(pick any)</span>':'')+'</div>'+opts+'<input class="clar-other" placeholder="Type your answer…"></div>';}).join('');
@@ -907,12 +907,12 @@ window.addEventListener('message',e=>{const m=e.data;switch(m.command){
   case 'streamChunk':if(activeThinkingStart){finishThinking();}if(aiC){aiC.innerHTML=renderMd(m.text);}scrollDown();break;
   case 'endResponse':stopTimer('Thought');hideWork();aiC=null;setBusy(false);if(m.backend&&m.backend!=='error')curModel=m.backend;scrollDown();activeThinkingRow=null;showEndLogo();break;
   case 'errorCard':hideWork();aiC=null;addItem('err','<div class="errbox"><div class="errhd">'+sv('x')+' '+esc(m.title||'Error')+'</div><div class="errmsg">'+esc(m.message||'')+'</div></div>');setBusy(false);scrollDown();activeThinkingRow=null;showEndLogo();break;
-  case 'clearChat':stopAllShim();hideWork();todoEl=null;aiC=null;workEl=null;workRow=null;setBusy(false);activeThinkingRow=null;chat.innerHTML='<div id="welcome"><div class="mk"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><h1>Coding Agent</h1><div class="wq">What would you like to build?</div><div id="qa"><button class="qab" onclick="quick(\'Explain this codebase\')">Explain codebase</button><button class="qab" onclick="quick(\'Review my recent changes\')">Review changes</button><button class="qab" onclick="quick(\'Help me debug an issue\')">Debug an issue</button><button class="qab" onclick="quick(\'Write tests for this code\')">Write tests</button></div></div>';break;
+  case 'clearChat':stopAllShim();hideWork();todoEl=null;aiC=null;workEl=null;workRow=null;setBusy(false);activeThinkingRow=null;chat.innerHTML='<div id="welcome"><div class="mk"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><h1>Flash Code</h1><div class="wq">What would you like to build?</div><div id="qa"><button class="qab" onclick="quick(\'Explain this codebase\')">Explain codebase</button><button class="qab" onclick="quick(\'Review my recent changes\')">Review changes</button><button class="qab" onclick="quick(\'Help me debug an issue\')">Debug an issue</button><button class="qab" onclick="quick(\'Write tests for this code\')">Write tests</button></div></div>';break;
   case 'restoreChat':stopAllShim();hideWork();chat.innerHTML='';todoEl=null;aiC=null;workEl=null;workRow=null;setBusy(false);activeThinkingRow=null;(m.messages||[]).forEach((msg,i)=>{if(msg.role==='user')addUser(msg.content,i,msg.attachments);else if(msg.role==='assistant')restoreAI(msg.content);});scrollDown();showEndLogo();break;
   case 'workNotice':{workEl=addItem('ai','<div class="ai-c wl"></div>');shimStart(workEl.querySelector('.wl'),m.text);break;}
   case 'showNotice':if(workEl){const c=workEl.querySelector('.wl');shimStop(c);c.outerHTML='<div class="notice">'+sv('check')+' '+esc(m.text)+'</div>';workEl=null;}else addItem('ai','<div class="notice">'+esc(m.text)+'</div>');break;
   case 'addAttachmentToUI':addAtt(m.attachment);document.getElementById('inp').focus();break;
-  case 'showDiff':(m.changes||[]).forEach(ch=>{ch.diffId=m.diffId;if(aiC)aiC.insertAdjacentHTML('beforeend',buildDiff(ch));else addItem('ai',buildDiff(ch),'Coding Agent');});scrollDown();break;
+  case 'showDiff':(m.changes||[]).forEach(ch=>{ch.diffId=m.diffId;if(aiC)aiC.insertAdjacentHTML('beforeend',buildDiff(ch));else addItem('ai',buildDiff(ch),'Flash Code');});scrollDown();break;
   case 'changeCard':addItem('tool','<div class="notice">'+sv('check')+'<span>'+esc(m.summary||'changed')+': <code class="il" style="cursor:pointer;" onclick="openWorkspaceFile(\''+esc(m.path)+'\')">'+esc(m.path)+'</code></span></div>');break;
   case 'agentStart':hideW();todoEl=null;document.getElementById('statusbar').classList.add('show');setBusy(true);showWork();startThinking();break;
   case 'agentStatus':
@@ -944,16 +944,16 @@ window.addEventListener('message',e=>{const m=e.data;switch(m.command){
   case 'agentToolOutput':appendToolOutput(m.tool, m.text);break;
   case 'agentAskUser':
     clearActiveThinking();
-    addItem('ai',buildClar(JSON.stringify({questions:m.questions}),'agent'),'Coding Agent');
+    addItem('ai',buildClar(JSON.stringify({questions:m.questions}),'agent'),'Flash Code');
     break;
   case 'agentAskCommand':
     clearActiveThinking();
-    addItem('ai',buildCommandPermission(m.cmdId, m.cmd),'Coding Agent');
+    addItem('ai',buildCommandPermission(m.cmdId, m.cmd),'Flash Code');
     scrollDown();
     break;
   case 'agentAskCode':
     clearActiveThinking();
-    addItem('ai',buildCodePermission(m.cmdId, m.lang, m.code),'Coding Agent');
+    addItem('ai',buildCodePermission(m.cmdId, m.lang, m.code),'Flash Code');
     scrollDown();
     break;
   case 'agentSpawn':spawnAgentCard(m.id, m.role, m.task);break;
