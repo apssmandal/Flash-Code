@@ -54,9 +54,10 @@ body.vscode-light .tl::before{background:var(--accent)}
 .agent-card:hover{transform:translateY(-1px);border-color:var(--accent)}
 .agent-hd{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.12)}
 .agent-av{width:22px;height:22px;border-radius:6px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;position:relative}
-.agent-av::after{content:"";position:absolute;inset:-2px;border-radius:8px;border:1.5px solid var(--accent);opacity:0;animation:av-pulse 2s infinite}
-.agent-card.running .agent-av::after{opacity:1}
-@keyframes av-pulse{0%{transform:scale(1);opacity:1}100%{transform:scale(1.3);opacity:0}}
+.agent-av::after{content:"";position:absolute;inset:-2px;border-radius:8px;border:1.5px solid var(--accent);opacity:0;transition:opacity 0.2s}
+.agent-card.running .agent-av::after{opacity:1;animation:av-pulse 2s infinite}
+@keyframes av-pulse{0%{transform:scale(1);opacity:1;box-shadow:0 0 0 0 rgba(var(--accent-rgb,100,150,255),0.4)}100%{transform:scale(1.3);opacity:0;box-shadow:0 0 0 8px rgba(var(--accent-rgb,100,150,255),0)}}
+.agent-av svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .agent-info{flex:1}
 .agent-name{font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px}
 .agent-badge{font-size:10px;padding:2px 6px;border-radius:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.02em}
@@ -67,9 +68,11 @@ body.vscode-light .tl::before{background:var(--accent)}
 .agent-prog{height:3px;background:rgba(128,128,128,0.1);position:relative;overflow:hidden}
 .agent-prog-bar{height:100%;width:0%;background:var(--accent);transition:width 0.4s ease}
 .agent-card.running .agent-prog-bar{background:linear-gradient(90deg, var(--accent) 30%, var(--green) 100%)}
-.agent-logs-btn{background:none;border:none;color:var(--dim);font-size:11px;cursor:pointer;padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;transition:all 0.2s}
+.agent-hd-acts{display:flex;align-items:center;gap:4px}
+.agent-abort-btn, .agent-logs-btn{background:none;border:none;color:var(--dim);font-size:11px;cursor:pointer;padding:4px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;transition:all 0.2s}
+.agent-abort-btn:hover{color:#FF5E5E;background:rgba(255,94,94,0.1)}
 .agent-logs-btn:hover{color:var(--fg);background:var(--hover)}
-.agent-logs-btn svg{width:12px;height:12px;transition:transform 0.2s}
+.agent-abort-btn svg, .agent-logs-btn svg{width:12px;height:12px;transition:transform 0.2s}
 .agent-card.open .agent-logs-btn svg{transform:rotate(90deg)}
 .agent-bd{padding:10px 14px;display:none;background:rgba(0,0,0,0.06)}
 .agent-card.open .agent-bd{display:block}
@@ -492,7 +495,13 @@ file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><pol
 term:'<rect x="2" y="3" width="20" height="18" rx="2" ry="2"/><polyline points="6 9 9 12 6 15"/><line x1="11" y1="15" x2="16" y2="15"/>',
 edit:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
 square:'<rect x="3" y="3" width="18" height="18" rx="3" ry="3"/>',
-chevron:'<polyline points="9 18 15 12 9 6"/>'};
+  chevron:'<polyline points="9 18 15 12 9 6"/>',
+  bot:'<rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/>',
+  planner:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
+  inspector:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  debugger:'<rect x="8" y="6" width="8" height="14" rx="4"/><path d="M6 10h12M6 14h12M6 18h12M12 2v4"/>',
+  architect:'<path d="M12 2L2 12h3v8h14v-8h3L12 2z"/>',
+  sentinel:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'};
 function sv(n){return '<svg viewBox="0 0 24 24">'+(IC[n]||'')+'</svg>'}
 // inject static icons into the composer only (keeps #chat ref + listeners intact)
 (function(){const c=document.getElementById('composer');c.innerHTML=c.innerHTML
@@ -711,7 +720,7 @@ function stripXmlTags(text) {
   return text;
 }
 
-function renderMd(raw){let clar='';raw=raw.replace(/<ask_user>([\s\S]*?)<\/ask_user>/g,(_,j)=>{clar+=buildClar(j,'chat');return ''});
+function renderMd(raw, isHistory = false){let clar='';raw=raw.replace(/<ask_user>([\s\S]*?)<\/ask_user>/g,(_,j)=>{if(!isHistory)clar+=buildClar(j,'chat');return ''});
   raw = raw.replace(/<Cognitive_Process>[\s\S]*?<\/Cognitive_Process>/g, '');
   raw = raw.replace(/<task_list>[\s\S]*?<\/task_list>/g, '');
   raw = raw.replace(/(^|\n)<think\b[^>]*>([\s\S]*?)<\/think>/g, '$1');
@@ -857,10 +866,11 @@ function addUser(t,idx,al){const r=addItem('user','<div class="ub">'+(t?esc(t):'
 function preview(src){const mo=document.getElementById('imgmodal');mo.querySelector('img').src=src;mo.classList.add('show');}
 function closePreview(){document.getElementById('imgmodal').classList.remove('show');}
 function startAI(){const r=addItem('ai','<div class="ai-c"></div>','Flash Code');aiC=r.querySelector('.ai-c');showWork();}
-function restoreAI(t){addItem('ai','<div class="ai-c">'+renderMd(t)+'</div>','Flash Code');}
+function restoreAI(t){addItem('ai','<div class="ai-c">'+renderMd(t, true)+'</div>','Flash Code');}
 
-const ST={send:'<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>',stop:'<circle cx="12" cy="12" r="10" fill="none" stroke="#FF5E5E" stroke-width="2"/><rect x="9" y="9" width="6" height="6" fill="#FF5E5E" rx="1"/>'};
-function setBusy(b){busy=b;document.body.classList.toggle('agent-active', b);const s=document.getElementById('send');s.innerHTML='<svg viewBox="0 0 24 24">'+(b?ST.stop:ST.send)+'</svg>';s.title=b?'Stop':'Send';s.classList.toggle('stopping',b);}
+const ST={send:'<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>',stop:'<circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6" fill="currentColor"/>'};
+function updateSendBtn(){const s=document.getElementById('send');if(!s)return;if(busy){s.disabled=false;return;}const i=document.getElementById('inp');s.disabled=!(i&&i.value.trim().length>0)&&atts.length===0;}
+function setBusy(b){busy=b;document.body.classList.toggle('agent-active', b);const s=document.getElementById('send');s.innerHTML='<svg viewBox="0 0 24 24">'+(b?ST.stop:ST.send)+'</svg>';s.title=b?'Stop':'Send';s.classList.toggle('stopping',b);updateSendBtn();}
 function cancel(){V.postMessage({command:'cancel'});stopAllShim();hideWork();document.getElementById('statusbar').classList.remove('show');aiC=null;setBusy(false);}
 function prefillAgent(role){const inp=document.getElementById('inp');inp.value='/agent '+role+' ';inp.focus();onInp(inp);}
 function send(){if(busy){cancel();return;}const inp=document.getElementById('inp');const t=inp.value.trim();if(!t&&!atts.length)return;hidePops();
@@ -889,7 +899,8 @@ function onKey(e){const sm=document.getElementById('smenu');
     if(e.key==='Escape'){hidePops();return;}}
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
 function onInp(el){el.style.height='42px';el.style.height=Math.min(el.scrollHeight,160)+'px';
-  if(el.value==='/'){el.value='';openActions();}}
+  if(el.value==='/'){el.value='';openActions();}
+  updateSendBtn();}
 function quick(t){const i=document.getElementById('inp');i.value=t;i.focus();onInp(i);}
 function runPrompt(t){if(busy)return;hidePops();addUser(t,undefined,[]);V.postMessage({command:'sendMessage',text:t,attachments:[]});setBusy(true);}
 
@@ -945,7 +956,7 @@ function toggleThink(){thinking=!thinking;V.postMessage({command:'setThinking',v
 
 /* attachments */
 function addAtt(a){atts.push(a);renderAtts();}
-function renderAtts(){const b=document.getElementById('att');if(!atts.length){b.className='';b.innerHTML='';return;}b.className='has';
+function renderAtts(){const b=document.getElementById('att');updateSendBtn();if(!atts.length){b.className='';b.innerHTML='';return;}b.className='has';
   b.innerHTML=atts.map((a,i)=>a.type==='image'?'<div class="chip"><img src="'+a.data+'" onclick="preview(this.src)" style="cursor:pointer"/><button class="x" onclick="rmAtt('+i+')">'+sv('x')+'</button></div>':'<div class="chip">'+sv('file')+esc(a.name)+'<button class="x" onclick="rmAtt('+i+')">'+sv('x')+'</button></div>').join('');}
 function rmAtt(i){atts.splice(i,1);renderAtts();}
 document.getElementById('inp').addEventListener('paste',ev=>{const items=(ev.clipboardData||{}).items||[];for(const it of items){if(it.type.startsWith('image/')){ev.preventDefault();const f=it.getAsFile();const rd=new FileReader();rd.onload=e=>addAtt({type:'image',data:e.target.result,mime:f.type,name:'paste.png'});rd.readAsDataURL(f);}}});
@@ -1137,7 +1148,7 @@ function clarTab(id,i){const el=document.getElementById(id);el.querySelectorAll(
 function clarChg(id,qi,inp){clarReady(id);}
 function clarReady(id){const el=document.getElementById(id);const n=+el.dataset.n;for(let i=0;i<n;i++){const q=el.querySelector('.clar-q[data-qi="'+i+'"]');if(!q)continue;const btn=q.querySelector('.clar-sub');if(btn)btn.classList.toggle('ready',!!q.querySelector('input:checked'));}}
 function clarSubmit(id){const el=document.getElementById(id);const n=+el.dataset.n;const ans=[];for(let i=0;i<n;i++){const q=el.querySelector('.clar-q[data-qi="'+i+'"]');const ck=[...q.querySelectorAll('input:checked')].map(c=>c.value==='Other'?(q.querySelector('.clar-other').value||'Other'):c.value);const otherVal=q.querySelector('.clar-other').value.trim();if(otherVal&&!ck.includes(otherVal)){ck.push('Custom: '+otherVal);}const h=el.querySelectorAll('.clar-tab')[i].textContent;if(ck.length)ans.push(h+': '+ck.join(', '));}if(ans.length<n)return;clarFinish(id,ans.join('\n'));}
-function clarFinish(id,txt){const el=document.getElementById(id);if(!el)return;if(el.dataset.ctx==='agent'){V.postMessage({command:'agentUserInput',value:txt});}else{addUser(txt);V.postMessage({command:'sendMessage',text:txt,attachments:[]});busy=true;document.getElementById('send').disabled=true;}el.innerHTML='<div class="applied-tag" style="padding:10px 12px">'+sv('check')+esc(txt.length>80?txt.slice(0,80)+'…':txt)+'</div>';if(activeClar===id)activeClar=null;}
+function clarFinish(id,txt){const el=document.getElementById(id);if(!el)return;if(el.dataset.ctx==='agent'){V.postMessage({command:'agentUserInput',value:txt});}else{addUser(txt);V.postMessage({command:'sendMessage',text:txt,attachments:[]});setBusy(true);}el.innerHTML='<div class="applied-tag" style="padding:10px 12px">'+sv('check')+esc(txt.length>80?txt.slice(0,80)+'…':txt)+'</div>';if(activeClar===id)activeClar=null;}
 function clarCancel(id){const el=document.getElementById(id);if(!el)return;if(el.dataset.ctx==='agent')V.postMessage({command:'agentUserInput',value:'(cancelled — use your best judgment)'});el.innerHTML='<div class="applied-tag" style="padding:10px 12px;color:var(--dim)">Cancelled</div>';if(activeClar===id)activeClar=null;}
 document.addEventListener('keydown',e=>{if(!activeClar)return;const el=document.getElementById(activeClar);if(!el)return;
   if(e.key==='Escape'){e.preventDefault();clarCancel(activeClar);return;}
@@ -1155,16 +1166,41 @@ let todoEl=null;
 function renderTodos(tasks){const inner='<div class="tt">Update Todos</div>'+tasks.map(t=>{const st=t.status||'pending';const ico=st==='done'?'check':st==='failed'?'x':'square';return '<div class="todo '+st+'"><span class="x">'+sv(ico)+'</span><span class="d">'+esc(t.desc||t.description||'')+'</span></div>';}).join('');
   if(todoEl){todoEl.querySelector('.todos').innerHTML=inner;}else{todoEl=addItem('tool','<div class="todos">'+inner+'</div>');}scrollDown();}
 
+function getAgentIcon(role) {
+  const r = (role||'').toLowerCase();
+  if(r.includes('plan')) return sv('planner');
+  if(r.includes('inspect') || r.includes('research')) return sv('inspector');
+  if(r.includes('debug')) return sv('debugger');
+  if(r.includes('architect')) return sv('architect');
+  if(r.includes('sentinel')) return sv('sentinel');
+  if(r.includes('code') || r.includes('coder')) return sv('code');
+  return sv('bot');
+}
+function abortAgent(id) {
+  V.postMessage({command: 'killSubagent', id: id});
+  const card = document.getElementById('agent-'+id);
+  if(card) {
+    card.classList.remove('running');
+    card.querySelector('.agent-prog-bar').style.background = 'var(--red)';
+    card.querySelector('.agent-badge').className = 'agent-badge fail';
+    card.querySelector('.agent-badge').textContent = 'aborted';
+    const btn = card.querySelector('.agent-abort-btn');
+    if(btn) btn.style.display = 'none';
+  }
+}
 /* parallel subagent management */
 function spawnAgentCard(id, role, task) {
   const inner = '<div class="agent-card running" id="agent-'+id+'" onclick="this.classList.toggle(\'open\')">'
     + '<div class="agent-hd">'
-    + '<div class="agent-av">A</div>'
+    + '<div class="agent-av">'+getAgentIcon(role)+'</div>'
     + '<div class="agent-info">'
     + '<div class="agent-name">'+esc(role)+' <span class="agent-badge run">running</span></div>'
     + '<div class="agent-task">'+esc(task)+'</div>'
     + '</div>'
+    + '<div class="agent-hd-acts">'
+    + '<button class="agent-abort-btn" onclick="event.stopPropagation();abortAgent(\''+id+'\')">'+sv('stop')+' Abort</button>'
     + '<button class="agent-logs-btn" onclick="event.stopPropagation();this.closest(\'.agent-card\').classList.toggle(\'open\')">'+sv('code')+' Logs</button>'
+    + '</div>'
     + '</div>'
     + '<div class="agent-prog"><div class="agent-prog-bar"></div></div>'
     + '<div class="agent-bd"><div class="agent-logs">Starting background worker...\n</div></div>'
@@ -1194,6 +1230,8 @@ function finishAgentCard(id, success, finalLog) {
   } else {
     card.querySelector('.agent-prog-bar').style.background = 'var(--red)';
   }
+  const btn = card.querySelector('.agent-abort-btn');
+  if (btn) btn.style.display = 'none';
   if (finalLog) {
     const logs = card.querySelector('.agent-logs');
     logs.textContent += finalLog + '\n';

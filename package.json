@@ -2,10 +2,12 @@
   "name": "flash-code",
   "displayName": "Flash Code",
   "description": "AI coding assistant — Claude Code-style agentic chat powered by round-robin free-tier Gemini API keys and Ollama",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "publisher": "Animixer",
+  "homepage": "https://animixer.in",
   "author": {
-    "name": "Arpan Mandal"
+    "name": "Arpan Mandal",
+    "url": "https://animixer.in"
   },
   "icon": "resources/icon.png",
   "engines": {
@@ -82,7 +84,8 @@
           "default": "gemini",
           "enum": [
             "ollama",
-            "gemini"
+            "gemini",
+            "nvidia"
           ],
           "description": "Default AI backend"
         },
@@ -105,6 +108,36 @@
           "type": "integer",
           "default": 4096,
           "description": "Context window size (num_ctx) for local Ollama models (in tokens)"
+        },
+        "flashCode.nvidia.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Nvidia / OpenAI API Key"
+        },
+        "flashCode.nvidia.url": {
+          "type": "string",
+          "default": "https://integrate.api.nvidia.com/v1",
+          "description": "Nvidia / OpenAI Base URL"
+        },
+        "flashCode.nvidia.model": {
+          "type": "string",
+          "default": "nvidia/nemotron-3-ultra-550b-a55b",
+          "description": "Nvidia / OpenAI Model Name"
+        },
+        "flashCode.nvidia.temperature": {
+          "type": "number",
+          "default": 1.0,
+          "description": "Temperature setting for Nvidia / OpenAI models"
+        },
+        "flashCode.nvidia.maxTokens": {
+          "type": "integer",
+          "default": 16384,
+          "description": "Max tokens for Nvidia / OpenAI models"
+        },
+        "flashCode.nvidia.stream": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable streaming for Nvidia / OpenAI models"
         },
         "flashCode.gemini.apiKey": {
           "type": "string",

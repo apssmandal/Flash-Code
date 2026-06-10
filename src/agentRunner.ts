@@ -10,8 +10,19 @@ import { TaskDispatcher } from './taskOrchestrator';
 import { RulesEngine } from './rulesEngine';
 import { EDIT_PROTOCOLS, TOOL_DEFINITIONS, AUTONOMOUS_DIRECTIVES, WEB_DESIGN_DIRECTIVES } from './prompts';
 
-export const AGENT_PROMPT =
-`You are "Flash Code", a state-of-the-art autonomous coding agent executing directly inside a VS Code workspace.
+export function getAgentPrompt(allowedTools?: string[]): string {
+    let toolsDef = TOOL_DEFINITIONS;
+    if (allowedTools && allowedTools.length > 0) {
+        const lines = TOOL_DEFINITIONS.split('\n');
+        const allowedLines = lines.filter(line => {
+            const match = line.match(/<([a-zA-Z0-9_]+)/);
+            if (!match) return true;
+            return allowedTools.includes(match[1]);
+        });
+        toolsDef = allowedLines.join('\n');
+    }
+    
+    return `You are "Flash Code", a state-of-the-art autonomous coding agent executing directly inside a VS Code workspace.
 You solve tasks systematically by planning, invoking workspace tools, observing results, self-correcting, and cooperating with background agents.
 
 =========================================
@@ -20,7 +31,7 @@ OUTPUT FORMAT & XML TOOL TAGS
 Your output can contain text (prose) and tool execution tags. All tool tags MUST be raw, unescaped XML (NEVER wrap tool tags in markdown code blocks).
 
 <Tool_Registry>
-` + TOOL_DEFINITIONS + `
+` + toolsDef + `
   <status>a short progress note (e.g., "Compiling source files...")</status>
   <task_list>[{"id":"1","desc":"task","status":"pending"}]</task_list>
   <spawn_agent role="Architect|Inspector|QA|Stylist|Sculptor" task="subtask description"/>
@@ -32,6 +43,7 @@ Your output can contain text (prose) and tool execution tags. All tool tags MUST
 CRITICAL OPERATIONAL RULES
 =========================================
 ` + AUTONOMOUS_DIRECTIVES + '\n\n' + WEB_DESIGN_DIRECTIVES;
+}
 
 interface ToolCall { tool: string; attrs: Record<string, string>; body: string; raw: string; }
 
@@ -50,7 +62,7 @@ export class AgentRunner {
     private _cancelled = false;
     private _userInput?: (v: string) => void;
 
-    constructor(private d: AgentDeps, private systemPrompt: string = AGENT_PROMPT) {}
+    constructor(private d: AgentDeps, private systemPrompt: string = getAgentPrompt(), private allowedTools?: string[]) {}
 
     cancel() { this._cancelled = true; this._userInput?.('[cancelled]'); }
     resolveUserInput(v: string) { this._userInput?.(v); this._userInput = undefined; }
@@ -65,6 +77,7 @@ export class AgentRunner {
             + '\n\nProject structure:\n' + tree;
         const work: Msg[] = [...history.slice(-8), { role: 'user', content: userText }];
         let finalProse = '';
+        let hasPendingTasks = false;
 
         try {
             for (let iter = 0; iter < 50; iter++) {
@@ -79,13 +92,19 @@ export class AgentRunner {
                 for (const t of matchAll(buf, /<think\b[^>]*>([\s\S]*?)<\/think>/g)) this.d.post({ command: 'agentThinking', text: t.trim() });
                 for (const s of matchAll(buf, /<status>([\s\S]*?)<\/status>/g)) this.d.post({ command: 'agentStatus', text: s.trim() });
                 const tl = /<task_list>([\s\S]*?)<\/task_list>/.exec(buf);
-                if (tl) { try { this.d.post({ command: 'agentTaskList', tasks: JSON.parse(tl[1].trim()) }); } catch {} }
+                if (tl) { 
+                    try { 
+                        const tasks = JSON.parse(tl[1].trim());
+                        this.d.post({ command: 'agentTaskList', tasks }); 
+                        hasPendingTasks = tasks.some((t: any) => !['done', 'completed'].includes((t.status || '').toLowerCase()));
+                    } catch {} 
+                }
 
                 // Check for response truncation (unclosed XML tags)
-                const openEdit = buf.includes('<edit') && !buf.includes('</edit>');
-                const openCreate = buf.includes('<create') && !buf.includes('</create>');
-                const openThink = buf.includes('<think') && !buf.includes('</think>');
-                const openAskUser = buf.includes('<ask_user') && !buf.includes('</ask_user>');
+                const openEdit = /<edit\b/.test(buf) && !buf.includes('</edit>');
+                const openCreate = /<create\b/.test(buf) && !buf.includes('</create>');
+                const openThink = /<think\b/.test(buf) && !buf.includes('</think>');
+                const openAskUser = /<ask_user\b/.test(buf) && !buf.includes('</ask_user>');
                 const truncated = openEdit || openCreate || openThink || openAskUser;
 
                 if (truncated) {
@@ -107,6 +126,10 @@ export class AgentRunner {
                 if (prose) { this.d.post({ command: 'agentProse', text: prose }); finalProse = prose; }
 
                 if (!calls.length) { 
+                    if (hasPendingTasks) {
+                        work.push({ role: 'user', content: 'You have unfinished tasks in your task list. Please proceed with execution by emitting the necessary tool tags. Do NOT stop.' });
+                        continue;
+                    }
                     if (tl) {
                         work.push({ role: 'user', content: 'Task list received. Please proceed with execution by emitting tool tags.' });
                         continue;
@@ -117,15 +140,26 @@ export class AgentRunner {
                 // Execute: run all tool calls in the response.
                 const results: string[] = [];
                 const subagentPromises: Promise<string>[] = [];
+                let spawnedAgentThisTurn = false;
                 for (const c of calls) {
                     if (this._cancelled) break;
+
+                    if (c.tool === 'spawn_agent') {
+                        subagentPromises.push(this.doSpawn(c));
+                        spawnedAgentThisTurn = true;
+                        continue;
+                    }
+
+                    if (spawnedAgentThisTurn) {
+                        results.push(`[SYSTEM NOTE: <${c.tool}> was IGNORED. You spawned an agent prior to this command. You must wait for the subagent to finish before issuing further commands.]`);
+                        continue;
+                    }
+
                     if (c.tool === 'edit' || c.tool === 'create') {
                         results.push(await this.doWrite(c));
                     } else if (c.tool === 'ask_user') {
                         results.push(await this.doAsk(c));
                         break; // ask_user stops execution to wait for user input
-                    } else if (c.tool === 'spawn_agent') {
-                        subagentPromises.push(this.doSpawn(c));
                     } else if (c.tool === 'run_command') {
                         results.push(await this.doCommand(c));
                     
@@ -162,23 +196,29 @@ export class AgentRunner {
         };
         // CRITICAL: Strip out thought blocks so we don't accidentally execute tools hallucinated inside them
         const activeBuf = buf.replace(/<think\b[^>]*>[\s\S]*?<\/think>/g, '').replace(/<thought\b[^>]*>[\s\S]*?<\/thought>/g, '');
-        for (const m of matchAllFull(activeBuf, /<(read_file|list_files|search_files)([^>]*?)\/?>/g)) push(m[1], m[2] || '', '', m[0]);
-        for (const m of matchAllFull(activeBuf, /<edit([^>]*?)>([\s\S]*?)<\/edit>/g)) push('edit', m[1] || '', m[2] || '', m[0]);
-        for (const m of matchAllFull(activeBuf, /<create([^>]*?)>([\s\S]*?)<\/create>/g)) push('create', m[1] || '', m[2] || '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<(read_file|list_files|search_files)\b([^>]*?)\/?>/g)) push(m[1], m[2] || '', '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<edit\b([^>]*?)>([\s\S]*?)<\/edit>/g)) push('edit', m[1] || '', m[2] || '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<create\b([^>]*?)>([\s\S]*?)<\/create>/g)) push('create', m[1] || '', m[2] || '', m[0]);
         for (const m of matchAllFull(activeBuf, /<ask_user>([\s\S]*?)<\/ask_user>/g)) push('ask_user', '', m[1] || '', m[0]);
-        for (const m of matchAllFull(activeBuf, /<spawn_agent([^>]*?)\/?>/g)) push('spawn_agent', m[1] || '', '', m[0]);
-        for (const m of matchAllFull(activeBuf, /<run_command([^>]*?)\/?>/g)) push('run_command', m[1] || '', '', m[0]);
-        for (const m of matchAllFull(activeBuf, /<run_code([^>]*?)>([\s\S]*?)<\/run_code>/g)) push('run_code', m[1] || '', m[2] || '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<spawn_agent\b([^>]*?)\/?>/g)) push('spawn_agent', m[1] || '', '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<run_command\b([^>]*?)\/?>/g)) push('run_command', m[1] || '', '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<run_code\b([^>]*?)>([\s\S]*?)<\/run_code>/g)) push('run_code', m[1] || '', m[2] || '', m[0]);
 
         const toolsNoBody = ['fetch_url','search_web','delete_file','rename_file','read_dir','git_status','git_diff','git_commit','git_log','git_blame','create_branch','run_tests','search_regex','npm_install','curl_request','read_json','copy_file','get_file_info','create_dir','format_json','get_env_var','base64_encode','base64_decode','zip_dir','unzip_file'];
         for (const t of toolsNoBody) {
-            for (const m of matchAllFull(activeBuf, new RegExp(`<${t}([^>]*?)\/?>`, 'g'))) push(t, m[1] || '', '', m[0]);
+            for (const m of matchAllFull(activeBuf, new RegExp(`<${t}\\b([^>]*?)\/?>`, 'g'))) push(t, m[1] || '', '', m[0]);
         }
-        for (const m of matchAllFull(activeBuf, /<overwrite_file([^>]*?)>([\s\S]*?)<\/overwrite_file>/g)) push('overwrite_file', m[1] || '', m[2] || '', m[0]);
-        for (const m of matchAllFull(activeBuf, /<append_file([^>]*?)>([\s\S]*?)<\/append_file>/g)) push('append_file', m[1] || '', m[2] || '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<overwrite_file\b([^>]*?)>([\s\S]*?)<\/overwrite_file>/g)) push('overwrite_file', m[1] || '', m[2] || '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<append_file\b([^>]*?)>([\s\S]*?)<\/append_file>/g)) push('append_file', m[1] || '', m[2] || '', m[0]);
 
         // Keep document order so a write/ask appearing before reads is handled correctly.
         calls.sort((a, b) => buf.indexOf(a.raw) - buf.indexOf(b.raw));
+        
+        if (this.allowedTools && this.allowedTools.length > 0) {
+            const alwaysAllowed = ['ask_user', 'spawn_agent'];
+            return calls.filter(c => this.allowedTools!.includes(c.tool) || alwaysAllowed.includes(c.tool));
+        }
+        
         return calls;
     }
 
@@ -223,6 +263,12 @@ export class AgentRunner {
         const ws = this.d.workspaceUri();
         const fp = c.attrs.path;
         if (!ws || !fp) return '[' + c.tool + '] missing workspace or path';
+        
+        const mode = this.d.getMode();
+        if (mode === 'plan' && !fp.includes('.flash/plan.md') && !fp.endsWith('.md') && !fp.includes('.agent_work/')) {
+            return `[${c.tool} ${fp}] ERROR: Code edits are STRICTLY FORBIDDEN in 'plan' mode. You may only create or edit .md documentation files.`;
+        }
+        
         const uri = vscode.Uri.joinPath(ws, fp);
         let old = '';
         try { old = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf-8'); } catch {}
@@ -245,7 +291,6 @@ export class AgentRunner {
         }
 
         // The diff card (with its "Edit <path> [badge]" header) is the only UI for a write — no separate tool card.
-        const mode = this.d.getMode();
         const diff = computeSideBySide(old, newContent);
         if (mode === 'ask') {
             const diffId = Math.random().toString(36).substring(7);
@@ -256,7 +301,7 @@ export class AgentRunner {
             await vscode.workspace.fs.writeFile(uri, Buffer.from(newContent, 'utf-8'));
             return '[' + c.tool + ' ' + fp + '] accepted; written.';
         }
-        // auto-edit / autonomous
+        // plan (for .md files), auto-edit, or autonomous
         this.d.recordSnapshot(fp, old);
         await vscode.workspace.fs.writeFile(uri, Buffer.from(newContent, 'utf-8'));
         this.d.post({ command: 'showDiff', changes: [{ path: fp, diff, badge: old ? 'Modified' : 'new', applied: true }] });
@@ -351,7 +396,7 @@ export class AgentRunner {
         if (!cmd) return '[run_command] Error: no command specified.';
 
         const mode = this.d.getMode();
-        if (mode === 'ask' && !bypassAsk) {
+        if ((mode === 'ask' || mode === 'plan') && !bypassAsk) {
             // Request user approval via the permission dialog workflow
             const approved = await this.d.askCommand(cmd);
             if (!approved) {
@@ -447,7 +492,7 @@ export class AgentRunner {
         }
 
         const mode = this.d.getMode();
-        if (mode === 'ask') {
+        if (mode === 'ask' || mode === 'plan') {
             const approved = await this.d.askCode(lang, c.body);
             if (!approved) {
                 try {
@@ -477,6 +522,17 @@ export class AgentRunner {
         const ws = this.d.workspaceUri();
         const fp = c.attrs.path;
         if (!ws || !fp) return '[' + c.tool + '] missing workspace or path';
+        
+        const mode = this.d.getMode();
+        if (mode === 'plan' && !fp.includes('.flash/plan.md') && !fp.endsWith('.md') && !fp.includes('.agent_work/')) {
+            return `[${c.tool} ${fp}] ERROR: Code edits are STRICTLY FORBIDDEN in 'plan' mode. You may only create or edit .md documentation files.`;
+        }
+        
+        if (mode === 'ask') {
+            const approved = await this.d.askCommand(`Allow ${c.tool} to modify ${fp}?`);
+            if (!approved) return '[' + c.tool + ' ' + fp + '] User REJECTED the file modification.';
+        }
+
         const uri = vscode.Uri.joinPath(ws, fp);
         try {
             if (c.tool === 'overwrite_file') {
@@ -686,13 +742,13 @@ function stripTags(s: string): string {
         .replace(/<thought\b[^>]*>[\s\S]*?<\/thought>/g, '')
         .replace(/<status>[\s\S]*?<\/status>/g, '')
         .replace(/<task_list>[\s\S]*?<\/task_list>/g, '')
-        .replace(/<edit[^>]*?>[\s\S]*?<\/edit>/g, '')
-        .replace(/<create[^>]*?>[\s\S]*?<\/create>/g, '')
+        .replace(/<edit\b[^>]*?>[\s\S]*?<\/edit>/g, '')
+        .replace(/<create\b[^>]*?>[\s\S]*?<\/create>/g, '')
         .replace(/<ask_user>[\s\S]*?<\/ask_user>/g, '')
-        .replace(/<spawn_agent[^>]*?\/?>/g, '')
-        .replace(/<run_command[^>]*?>([\s\S]*?<\/run_command>)?/g, '')
-        .replace(/<run_code[^>]*?>[\s\S]*?<\/run_code>/g, '')
-        .replace(/<(read_file|list_files|search_files)[^>]*?\/?>/g, '');
+        .replace(/<spawn_agent\b[^>]*?\/?>/g, '')
+        .replace(/<run_command\b[^>]*?>([\s\S]*?<\/run_command>)?/g, '')
+        .replace(/<run_code\b[^>]*?>[\s\S]*?<\/run_code>/g, '')
+        .replace(/<(read_file|list_files|search_files)\b[^>]*?\/?>/g, '');
 }
 function clip(s: string, max: number): string {
     if (s.length <= max) return s;

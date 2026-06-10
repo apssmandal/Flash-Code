@@ -12,7 +12,7 @@ export interface DiffRow {
 
 export function hasDiff(a: string, b: string): boolean { return a !== b; }
 
-const MAX_LCS_LINES = 2000;
+const MAX_LCS_LINES = 500;
 
 export function computeSideBySide(oldText: string, newText: string, ctx = 3): DiffRow[] {
     const o = oldText.length ? oldText.split('\n') : [];

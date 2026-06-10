@@ -16,10 +16,17 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         vscode.workspace.onDidChangeWorkspaceFolders(() => this.pushSessions());
     }
 
-    resolveWebviewView(view: vscode.WebviewView) {
+    async resolveWebviewView(view: vscode.WebviewView) {
         this._view = view;
         view.webview.options = { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(this.ctx.extensionUri, 'media')] };
-        view.webview.html = fs.readFileSync(path.join(this.ctx.extensionUri.fsPath, 'media', 'sidebar.html'), 'utf-8');
+        view.webview.html = '<html><body><h3>Loading Sidebar...</h3></body></html>';
+        
+        try {
+            const data = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(this.ctx.extensionUri, 'media', 'sidebar.html'));
+            view.webview.html = Buffer.from(data).toString('utf-8');
+        } catch (e) {
+            view.webview.html = '<html><body><h3>Failed to load UI</h3></body></html>';
+        }
 
         view.webview.onDidReceiveMessage(async (m) => {
             const cfg = vscode.workspace.getConfiguration('flashCode');
@@ -56,6 +63,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     const s = m.settings || {};
                     if (s.model === 'ollama') {
                         await cfg.update('defaultBackend', 'ollama', true);
+                    } else if (s.model === 'nvidia') {
+                        await cfg.update('defaultBackend', 'nvidia', true);
                     } else {
                         await cfg.update('defaultBackend', 'gemini', true);
                         if (s.model) await cfg.update('gemini.model', s.model, true);
@@ -64,6 +73,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                     if (s.ollamaModel) await cfg.update('ollama.model', s.ollamaModel, true);
                     if (s.ollamaTemp !== undefined) await cfg.update('ollama.temperature', parseFloat(s.ollamaTemp), true);
                     if (s.ollamaNumCtx !== undefined) await cfg.update('ollama.numCtx', parseInt(s.ollamaNumCtx, 10), true);
+                    if (s.nvidiaKey !== undefined) await cfg.update('nvidia.apiKey', s.nvidiaKey, true);
+                    if (s.nvidiaUrl !== undefined) await cfg.update('nvidia.url', s.nvidiaUrl, true);
+                    if (s.nvidiaModel !== undefined) await cfg.update('nvidia.model', s.nvidiaModel, true);
+                    if (s.nvidiaTemp !== undefined) await cfg.update('nvidia.temperature', parseFloat(s.nvidiaTemp), true);
+                    if (s.nvidiaMaxTokens !== undefined) await cfg.update('nvidia.maxTokens', parseInt(s.nvidiaMaxTokens, 10), true);
+                    if (s.nvidiaStream !== undefined) await cfg.update('nvidia.stream', Boolean(s.nvidiaStream), true);
                     if (Array.isArray(s.apiKeys)) await cfg.update('gemini.apiKeys', s.apiKeys.filter(Boolean), true);
                     if (s.defaultMode) await cfg.update('mode', s.defaultMode, true);
                     if (s.defaultEffort) await cfg.update('effort', s.defaultEffort, true);
@@ -85,15 +100,26 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     pushSettings() {
         const cfg = vscode.workspace.getConfiguration('flashCode');
         const backend = cfg.get<string>('defaultBackend') || 'gemini';
+        let modelValue = 'gemini-2.5-flash';
+        if (backend === 'ollama') modelValue = 'ollama';
+        else if (backend === 'nvidia') modelValue = 'nvidia';
+        else modelValue = cfg.get<string>('gemini.model') || 'gemini-2.5-flash';
+
         this._view?.webview.postMessage({
             command: 'settingsData',
             settings: {
-                model: backend === 'ollama' ? 'ollama' : (cfg.get<string>('gemini.model') || 'gemini-2.5-flash'),
+                model: modelValue,
                 apiKeys: cfg.get<string[]>('gemini.apiKeys') || [],
                 ollamaUrl: cfg.get<string>('ollama.url') || 'http://localhost:11434',
                 ollamaModel: cfg.get<string>('ollama.model') || 'qwen3-coder',
                 ollamaTemp: cfg.get<number>('ollama.temperature') ?? 0.2,
                 ollamaNumCtx: cfg.get<number>('ollama.numCtx') ?? 4096,
+                nvidiaKey: cfg.get<string>('nvidia.apiKey') || '',
+                nvidiaUrl: cfg.get<string>('nvidia.url') || 'https://integrate.api.nvidia.com/v1',
+                nvidiaModel: cfg.get<string>('nvidia.model') || 'nvidia/nemotron-3-ultra-550b-a55b',
+                nvidiaTemp: cfg.get<number>('nvidia.temperature') ?? 1.0,
+                nvidiaMaxTokens: cfg.get<number>('nvidia.maxTokens') ?? 16384,
+                nvidiaStream: cfg.get<boolean>('nvidia.stream') ?? true,
                 defaultMode: cfg.get<string>('mode') || 'ask',
                 defaultEffort: cfg.get<string>('effort') || 'medium',
             },

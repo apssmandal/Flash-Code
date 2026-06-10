@@ -5,8 +5,7 @@ import { sendMessage } from './backends/backendManager';
 import { Msg, EFFORT, GenConfig } from './backends/types';
 import { getActiveFileContent, getProjectTree, getSelectedText, getAllFiles, getVisibleFilesContent } from './fileManager';
 import { SessionProvider } from './sessionProvider';
-import { SidebarProvider } from './sidebarProvider';
-import { AgentRunner, AGENT_PROMPT } from './agentRunner';
+import { AgentRunner, getAgentPrompt } from './agentRunner';
 import { AgentCore } from './agent/agentCore';
 import { computeSideBySide } from './diffUtils';
 import { parseEdits, applyEdits } from './editUtils';
@@ -22,9 +21,14 @@ import {
 } from './prompts';
 interface Snap { path: string; content: string; }
 
+export interface ISidebar {
+    pushKeyStatus(s: any): void;
+    openSettings(): void;
+}
+
 export class ChatPanel {
     public static cur: ChatPanel | undefined;
-    public static sidebar: SidebarProvider | undefined;
+    public static sidebar: ISidebar | undefined;
     private _p: vscode.WebviewPanel;
     private _h: Msg[] = [];
     private _sid: string;
@@ -45,7 +49,7 @@ export class ChatPanel {
     private _diffResolvers: Map<string, (v: boolean) => void> = new Map();
     private _cmdResolvers: Map<string, (v: boolean) => void> = new Map();
     private _agent: AgentRunner;
-    private _subagents: AgentRunner[] = [];
+    private _subagents: { id?: string, runner: AgentRunner, abort: AbortController }[] = [];
 
     public static createOrShow(ctx: vscode.ExtensionContext, sp: SessionProvider) {
         if (ChatPanel.cur) { ChatPanel.cur._p.reveal(undefined, true); return; }
@@ -53,12 +57,23 @@ export class ChatPanel {
             { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
             { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(ctx.extensionUri, 'media')] });
         ChatPanel.cur = new ChatPanel(p, ctx, sp);
+        ChatPanel.cur._initHtml();
+    }
+
+    private async _initHtml() {
+        try {
+            const uri = vscode.Uri.joinPath(this._ctx.extensionUri, 'media', 'chat.html');
+            const data = await vscode.workspace.fs.readFile(uri);
+            this._p.webview.html = Buffer.from(data).toString('utf-8');
+        } catch (e) {
+            this._p.webview.html = `<html><body><h1>Failed to load UI</h1></body></html>`;
+        }
     }
 
     private constructor(p: vscode.WebviewPanel, ctx: vscode.ExtensionContext, sp: SessionProvider) {
         this._p = p; this._ctx = ctx; this._sp = sp;
         this._sid = Date.now().toString();
-        this._p.webview.html = fs.readFileSync(path.join(ctx.extensionUri.fsPath, 'media', 'chat.html'), 'utf-8');
+        this._p.webview.html = '<html><body><h3>Loading Flash Code UI...</h3></body></html>';
         this._p.iconPath = vscode.Uri.joinPath(ctx.extensionUri, 'resources', 'icon.svg');
 
         const cfg = vscode.workspace.getConfiguration('flashCode');
@@ -67,7 +82,7 @@ export class ChatPanel {
 
         this._agent = new AgentRunner({
             post: (m) => this.post(m),
-            send: (messages, onChunk) => sendMessage(messages, onChunk, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s) }),
+            send: (messages, onChunk) => sendMessage(messages, onChunk, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s), signal: this._abortController?.signal }),
             workspaceUri: () => vscode.workspace.workspaceFolders?.[0]?.uri,
             getMode: () => this._mode,
             recordSnapshot: (fp, old) => { const idx = this._h.length; const sn = this._snaps.get(idx) || []; sn.push({ path: fp, content: old }); this._snaps.set(idx, sn); },
@@ -88,7 +103,7 @@ export class ChatPanel {
                     this._cmdResolvers.set(cmdId, resolve);
                 });
             }
-        }, AGENT_PROMPT);
+        }, getAgentPrompt());
 
         const last = ctx.globalState.get<string>(lastKey());
         if (last) this.loadSession(last);
@@ -109,6 +124,22 @@ export class ChatPanel {
                     await this._send(m.text, m.attachments || []);
                     break;
                 case 'spawnSubagent': await this._spawnSubagent(m.role, m.task); break;
+                case 'killSubagent': {
+                    const subId = m.id;
+                    const a = TaskDispatcher.getInstance().agents.get(subId);
+                    if (a && a.status !== 'Completed' && a.status !== 'Error') {
+                        TaskDispatcher.getInstance().updateAgent(subId, 'Error', 'Aborted by user');
+                        TaskDispatcher.getInstance().removeAgent(subId);
+                    }
+                    const idx = this._subagents.findIndex(s => s.id === subId);
+                    if (idx !== -1) {
+                        this._subagents[idx].abort.abort();
+                        this._subagents[idx].runner.cancel();
+                        this._subagents.splice(idx, 1);
+                    }
+                    this.post({ command: 'agentFinish', id: subId, success: false, log: '\n[System] Aborted by user.' });
+                    break;
+                }
                 case 'newChat': this.newChat(); break;
                 case 'uploadFile': await this._upload(); break;
                 case 'addContext': await this._addCtx(); break;
@@ -425,28 +456,34 @@ export class ChatPanel {
             }
             
             const triageWork: Msg[] = [{ role: 'system', content: TRIAGE_PROMPT }, { role: 'user', content: contextStr + '<Current_Request>\\n' + fullUser + '\\n</Current_Request>' }];
-            const res = await sendMessage(triageWork, () => {}, { config: this._cfg(), signal: this._abortController?.signal });
+            
+            // Add a timeout specifically for Triage so it doesn't hang
+            let triageAbort: AbortController | undefined;
+            let signal = this._abortController?.signal;
+            let timeoutId: NodeJS.Timeout | undefined;
+            
+            if (typeof AbortSignal !== 'undefined' && (AbortSignal as any).timeout) {
+                // Node 17.3+ supports AbortSignal.any and timeout, but VS Code might have older Node typings, so fallback to custom
+                triageAbort = new AbortController();
+                const parentSignal = this._abortController?.signal;
+                if (parentSignal) parentSignal.addEventListener('abort', () => triageAbort?.abort());
+                timeoutId = setTimeout(() => { triageAbort?.abort(); }, 60000);
+                signal = triageAbort.signal;
+            }
+
+            const res = await sendMessage(triageWork, () => {}, { config: this._cfg(), signal: signal });
+            if (timeoutId) clearTimeout(timeoutId);
             triageOut = res.text;
-        } catch (e) {
+        } catch (e: any) {
             this._busy = false;
+            if (this._cancel) return;
+            const errStr = e.name === 'AbortError' || e.message === 'Cancelled' ? 'Triage timed out or was cancelled.' : e.message;
+            this.post({ command: 'agentStatus', text: 'Triage failed: ' + errStr });
+            this.post({ command: 'error', text: errStr });
             return;
         }
 
         if (this._gen !== gen) return;
-
-        if (triageOut.includes('PATH A') || triageOut.includes('Needs more context from user')) {
-            // Strip out the internal XML reasoning blocks so the user only sees the human-facing Clarification Protocol text
-            const cleanOut = triageOut.replace(/<Intent_Analysis>[\s\S]*?<\/Triage_Gate>/g, '').replace(/<Execution_Route>[\s\S]*?<\/Execution_Route>/g, '').trim();
-            
-            this._h.push(userMsg);
-            this.post({ command: 'tagLastUser', idx: this._h.length - 1 });
-            this._h.push({ role: 'assistant', content: cleanOut });
-            this.post({ command: 'startResponse', msgIdx: this._h.length });
-            this.post({ command: 'streamChunk', text: cleanOut });
-            this._save();
-            this._busy = false;
-            return;
-        }
 
         // Match: <route target="X" [role="Y"] [task="Z"] />
         const routeMatch = triageOut.match(/<route\s+target="([^"]+)"(?:\s+role="([^"]*)")?(?:\s+task="([^"]*)")?\s*\/>/i);
@@ -469,6 +506,7 @@ export class ChatPanel {
                 const rules = RulesEngine.getInstance().getProjectRules();
                 const sysPrompt = profile.systemPrompt + (rules ? `\n\n${rules}` : '') + `\n\nYour specific task is: "${task}".`;
 
+                const subAbort = new AbortController();
                 const subagent = new AgentRunner({
                     post: (msg) => {
                         if (msg.command === 'agentStatus') {
@@ -499,7 +537,7 @@ export class ChatPanel {
                     send: (messages, onChunk) => sendMessage(messages, (chunk) => {
                         onChunk(chunk);
                         this.post({ command: 'agentProgress', id, log: chunk });
-                    }, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s) }),
+                    }, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s), signal: subAbort.signal }),
                     workspaceUri: () => vscode.workspace.workspaceFolders?.[0]?.uri,
                     getMode: () => this._mode,
                     recordSnapshot: (fp, old) => { const idx = this._h.length; const sn = this._snaps.get(idx) || []; sn.push({ path: fp, content: old }); this._snaps.set(idx, sn); },
@@ -520,9 +558,9 @@ export class ChatPanel {
                             this._cmdResolvers.set(cmdId, resolve);
                         });
                     }
-                }, AGENT_PROMPT + '\n\n' + sysPrompt);
+                }, getAgentPrompt(profile?.defaultTools) + '\n\n' + sysPrompt, profile?.defaultTools);
 
-                this._subagents.push(subagent);
+                this._subagents.push({ id, runner: subagent, abort: subAbort });
                 dispatcher.enqueueRequest(10, async () => {
                     const ctx = `[Context provided by parent delegator]\n\nUser Request: ${fullUser}`;
                     try {
@@ -541,7 +579,7 @@ export class ChatPanel {
                         this.post({ command: 'agentProgress', id, log: `Error: ${e.message}` });
                         this.post({ command: 'agentFinish', id, success: false, log: `\nError: ${e.message}` });
                     } finally {
-                        this._subagents = this._subagents.filter(a => a !== subagent);
+                        this._subagents = this._subagents.filter(a => a.runner !== subagent);
                     }
                 });
 
@@ -616,7 +654,13 @@ export class ChatPanel {
         this.post({ command: 'tagLastUser', idx: userMsgIdx });
         this.post({ command: 'startResponse', msgIdx: this._h.length });
 
-        const mappedHistory = this._mapHistoryForLLM(this._h);
+        let workingHistory = [...this._h];
+        const rewrittenMatch = triageOut.match(/<rewritten_prompt>([\s\S]*?)<\/rewritten_prompt>/i);
+        if (rewrittenMatch && rewrittenMatch[1].trim()) {
+            workingHistory[userMsgIdx] = { ...workingHistory[userMsgIdx], content: `[Triage Enhanced Prompt]:\n${rewrittenMatch[1].trim()}` };
+        }
+
+        const mappedHistory = this._mapHistoryForLLM(workingHistory);
         const work: Msg[] = [{ role: 'system', content: sys }, ...mappedHistory.slice(-8)];
         try {
             for (let iter = 0; iter < 4; iter++) {
@@ -765,6 +809,7 @@ export class ChatPanel {
         const worktreePath = await dispatcher.spawnAgentWithWorktree(id, role, task); // Internally uses .flash/worktrees
         const worktreeUri = worktreePath ? vscode.Uri.file(worktreePath) : vscode.workspace.workspaceFolders?.[0]?.uri;
 
+        const subAbort = new AbortController();
         const subagent = new AgentRunner({
             post: (msg) => {
                 if (msg.command === 'agentStatus') {
@@ -795,7 +840,7 @@ export class ChatPanel {
             send: (messages, onChunk) => sendMessage(messages, (chunk) => {
                 onChunk(chunk);
                 this.post({ command: 'agentProgress', id, log: chunk });
-            }, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s), signal: this._abortController?.signal }),
+            }, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s), signal: subAbort.signal }),
             workspaceUri: () => worktreeUri,
             getMode: () => this._mode,
             recordSnapshot: (fp, old) => { const idx = this._h.length; const sn = this._snaps.get(idx) || []; sn.push({ path: fp, content: old }); this._snaps.set(idx, sn); },
@@ -816,9 +861,9 @@ export class ChatPanel {
                     this._cmdResolvers.set(cmdId, resolve);
                 });
             }
-        }, AGENT_PROMPT + '\n\n' + profile.systemPrompt + `\n\nYour specific task: "${task}".`);
+        }, getAgentPrompt(profile?.defaultTools) + '\n\n' + profile?.systemPrompt + `\n\nYour specific task: "${task}".`, profile?.defaultTools);
 
-        this._subagents.push(subagent);
+        this._subagents.push({ runner: subagent, abort: this._abortController! });
 
         const text = `Initialize specialized agent [${profile.role}] to solve: "${task}"`;
         const subagentPrompt = profile.systemPrompt + `\n\nYour specific task: "${task}".`;
@@ -856,7 +901,7 @@ export class ChatPanel {
             this.post({ command: 'agentFinish', id, success: false, log: `\nError: ${e.message}` });
             this.post({ command: 'agentError', message: e.message });
         } finally {
-            this._subagents = this._subagents.filter(a => a !== subagent);
+            this._subagents = this._subagents.filter(a => a.runner !== subagent);
             this._busy = false;
             this.post({ command: 'agentDone' });
         }
@@ -868,7 +913,8 @@ export class ChatPanel {
         this._busy = false;
         this._abortController?.abort();
         this._agent.cancel();
-        this._subagents.forEach(a => a.cancel());
+        this._subagents.forEach(a => { a.abort.abort(); a.runner.cancel(); });
+        this._subagents = [];
         for (const resolve of this._diffResolvers.values()) resolve(false);
         this._diffResolvers.clear();
         for (const resolve of this._cmdResolvers.values()) resolve(false);

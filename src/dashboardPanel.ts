@@ -31,7 +31,7 @@ export class DashboardPanel {
         this._p = p; 
         this._ctx = ctx;
 
-        this._p.webview.html = this.getHtml();
+        this._initHtml();
         this._p.iconPath = vscode.Uri.joinPath(ctx.extensionUri, 'resources', 'icon.svg');
 
         // Listen for state changes from the TaskDispatcher
@@ -48,11 +48,13 @@ export class DashboardPanel {
         this._p.onDidDispose(() => this.dispose(), null, this._disposables);
     }
 
-    private getHtml(): string {
+    private async _initHtml() {
+        this._p.webview.html = '<html><body><h3>Loading Dashboard...</h3></body></html>';
         try {
-            return fs.readFileSync(path.join(this._ctx.extensionUri.fsPath, 'media', 'dashboard.html'), 'utf-8');
+            const data = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(this._ctx.extensionUri, 'media', 'dashboard.html'));
+            this._p.webview.html = Buffer.from(data).toString('utf-8');
         } catch {
-            return `<html><body><h1>Dashboard UI not found</h1></body></html>`;
+            this._p.webview.html = `<html><body><h1>Dashboard UI not found</h1></body></html>`;
         }
     }
 

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { sendToOllama, isOllamaAvailable } from './ollama';
 import { sendToGemini } from './gemini';
+import { sendToOpenAI } from './openai';
 import { Msg, GenConfig, KeyStatusCb } from './types';
 
 export interface SendOpts {
@@ -33,6 +34,9 @@ export async function sendMessage(
             
             if (be === 'ollama') {
                 const text = await sendToOllama(messages, onChunk, config); // Ollama doesn't use signal yet but could
+                return { text, backend: be };
+            } else if (be === 'nvidia') {
+                const text = await sendToOpenAI(messages, onChunk, images, config, signal);
                 return { text, backend: be };
             } else {
                 const res = await sendToGemini(messages, onChunk, images, config, onKeyStatus, onStatus, undefined, 0, signal);
