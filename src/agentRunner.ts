@@ -49,13 +49,15 @@ interface ToolCall { tool: string; attrs: Record<string, string>; body: string; 
 
 export interface AgentDeps {
     post: (m: any) => void;
-    send: (messages: Msg[], onChunk: (t: string) => void) => Promise<{ text: string; backend: string; finishReason?: string }>;
+    send: (messages: Msg[], onChunk: (t: string) => void, signal?: AbortSignal) => Promise<{ text: string; backend: string; finishReason?: string }>;
     workspaceUri: () => vscode.Uri | undefined;
     getMode: () => string;                 // 'ask' | 'auto-edit' | 'autonomous'
-    recordSnapshot: (path: string, old: string) => void;
+    recordSnapshot: (path: string, old: string, exists: boolean) => void;
     askCommand: (cmd: string) => Promise<boolean>;
     registerDiffResolver: (diffId: string, resolve: (v: boolean) => void) => void;
     askCode: (lang: string, code: string) => Promise<boolean>;
+    registerSubagent?: (id: string, runner: AgentRunner, abort: AbortController) => void;
+    unregisterSubagent?: (id: string) => void;
 }
 
 export class AgentRunner {
@@ -181,9 +183,21 @@ export class AgentRunner {
             }
         } catch (e: any) {
             this.d.post({ command: 'agentError', message: e.message });
-            return finalProse;
+            return this.getFallbackProse(work, finalProse);
         }
         this.d.post({ command: 'agentDone' });
+        return this.getFallbackProse(work, finalProse);
+    }
+
+    private getFallbackProse(work: Msg[], finalProse: string): string {
+        if (!finalProse) {
+            for (let i = work.length - 1; i >= 0; i--) {
+                if (work[i].role === 'assistant') {
+                    const fallbackProse = stripTags(work[i].content).trim();
+                    if (fallbackProse) return fallbackProse;
+                }
+            }
+        }
         return finalProse;
     }
 
@@ -271,7 +285,11 @@ export class AgentRunner {
         
         const uri = vscode.Uri.joinPath(ws, fp);
         let old = '';
-        try { old = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf-8'); } catch {}
+        let exists = false;
+        try {
+            old = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf-8');
+            exists = true;
+        } catch {}
 
         // Build the new content: create = full body; edit = SEARCH/REPLACE pairs.
         let newContent: string, failures: string[] = [];
@@ -297,12 +315,12 @@ export class AgentRunner {
             this.d.post({ command: 'showDiff', diffId, changes: [{ path: fp, diff, badge: old ? 'Modified' : 'new' }] });
             const accepted = await new Promise<boolean>(res => { this.d.registerDiffResolver(diffId, res); });
             if (!accepted) return '[' + c.tool + ' ' + fp + '] User REJECTED the change.';
-            this.d.recordSnapshot(fp, old);
+            this.d.recordSnapshot(fp, old, exists);
             await vscode.workspace.fs.writeFile(uri, Buffer.from(newContent, 'utf-8'));
             return '[' + c.tool + ' ' + fp + '] accepted; written.';
         }
         // plan (for .md files), auto-edit, or autonomous
-        this.d.recordSnapshot(fp, old);
+        this.d.recordSnapshot(fp, old, exists);
         await vscode.workspace.fs.writeFile(uri, Buffer.from(newContent, 'utf-8'));
         this.d.post({ command: 'showDiff', changes: [{ path: fp, diff, badge: old ? 'Modified' : 'new', applied: true }] });
         return '[' + c.tool + ' ' + fp + '] written.';
@@ -328,6 +346,7 @@ export class AgentRunner {
         dispatcher.registerAgent(id, role, task);
         // Do NOT create a worktree for child agents; they inherit the parent's worktree!
 
+        const subAbort = new AbortController();
         try {
             const profile = getProfileByRole(role);
             const rules = RulesEngine.getInstance().getProjectRules();
@@ -363,14 +382,18 @@ export class AgentRunner {
                 send: (messages, onChunk) => this.d.send(messages, (chunk) => {
                     onChunk(chunk);
                     this.d.post({ command: 'agentProgress', id, log: chunk });
-                }),
+                }, subAbort.signal),
                 workspaceUri: () => this.d.workspaceUri(),
                 getMode: () => this.d.getMode(),
-                recordSnapshot: (path, old) => this.d.recordSnapshot(path, old),
+                recordSnapshot: (path, old, exists) => this.d.recordSnapshot(path, old, exists),
                 askCommand: (cmd) => this.d.askCommand(cmd),
                 registerDiffResolver: (diffId, resolve) => this.d.registerDiffResolver(diffId, resolve),
                 askCode: (lang, code) => this.d.askCode(lang, code)
             }, sysPrompt);
+
+            if (this.d.registerSubagent) {
+                this.d.registerSubagent(id, subagent, subAbort);
+            }
 
             this.d.post({ command: 'agentProgress', id, percentage: 30, log: 'Starting execution...' });
             
@@ -388,6 +411,10 @@ export class AgentRunner {
             dispatcher.updateAgent(id, 'Error', `Failed: ${e.message}`);
             this.d.post({ command: 'agentFinish', id, success: false, log: `\nError encountered: ${e.message}` });
             return `[Subagent ${role}] failed task: ${task}. Error: ${e.message}`;
+        } finally {
+            if (this.d.unregisterSubagent) {
+                this.d.unregisterSubagent(id);
+            }
         }
     }
 
@@ -535,12 +562,19 @@ export class AgentRunner {
 
         const uri = vscode.Uri.joinPath(ws, fp);
         try {
+            let old = '';
+            let exists = false;
+            try {
+                old = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf-8');
+                exists = true;
+            } catch {}
+
             if (c.tool === 'overwrite_file') {
+                this.d.recordSnapshot(fp, old, exists);
                 await vscode.workspace.fs.writeFile(uri, Buffer.from(c.body, 'utf-8'));
                 return '[' + c.tool + ' ' + fp + '] file overwritten successfully.';
             } else if (c.tool === 'append_file') {
-                let old = '';
-                try { old = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf-8'); } catch {}
+                this.d.recordSnapshot(fp, old, exists);
                 const newContent = old + (old.endsWith('\n') ? '' : '\n') + c.body;
                 await vscode.workspace.fs.writeFile(uri, Buffer.from(newContent, 'utf-8'));
                 return '[' + c.tool + ' ' + fp + '] content appended successfully.';
@@ -563,7 +597,9 @@ export class AgentRunner {
             'create_branch': 'git checkout -b ' + (c.attrs.name || 'new-branch'),
             'npm_install': 'npm install ' + (c.attrs.packages || ''),
             'run_tests': c.attrs.command || 'npm run test',
-            'search_regex': 'findstr /s /c:"' + (c.attrs.pattern || '') + '" *.*',
+            'search_regex': process.platform === 'win32'
+                ? 'findstr /s /c:"' + (c.attrs.pattern || '') + '" *.*'
+                : 'grep -rn "' + (c.attrs.pattern || '').replace(/"/g, '\\"') + '" .',
             'zip_dir': process.platform === 'win32' ? `powershell Compress-Archive -Path "${c.attrs.src}\\*" -DestinationPath "${c.attrs.dest}"` : `zip -r "${c.attrs.dest}" "${c.attrs.src}"`,
             'unzip_file': process.platform === 'win32' ? `powershell Expand-Archive -Path "${c.attrs.src}" -DestinationPath "${c.attrs.dest}"` : `unzip "${c.attrs.src}" -d "${c.attrs.dest}"`
         };
@@ -574,8 +610,9 @@ export class AgentRunner {
                 let out = '';
                 child.stdout?.on('data', (d: any) => out += d);
                 child.stderr?.on('data', (d: any) => out += d);
-                child.on('close', () => {
-                    this.d.post({ command: 'agentToolResult', tool: c.tool, success: true, output: out.length + ' bytes' });
+                child.on('close', (code: number) => {
+                    const success = code === 0;
+                    this.d.post({ command: 'agentToolResult', tool: c.tool, success, output: out.length + ' bytes' });
                     resolve('[' + c.tool + ']\n' + (out.slice(0, 4000) || '(no output)'));
                 });
             });

@@ -131,7 +131,35 @@ export class TaskDispatcher {
     public enqueueRequest<T>(priority: number, execute: (key: string, idx: number) => Promise<T>, onWait?: (msg: string) => void, signal?: AbortSignal): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             if (signal?.aborted) return reject(new Error('Cancelled'));
-            this.requestQueue.push({ priority, execute, resolve, reject, onWait, signal });
+
+            let cleanup = () => {};
+            const req: QueuedRequest = {
+                priority,
+                execute: async (key: string, idx: number) => {
+                    cleanup();
+                    return execute(key, idx);
+                },
+                resolve: (v) => { cleanup(); resolve(v); },
+                reject: (err) => { cleanup(); reject(err); },
+                onWait,
+                signal
+            };
+
+            const onAbort = () => {
+                const idx = this.requestQueue.indexOf(req);
+                if (idx !== -1) {
+                    this.requestQueue.splice(idx, 1);
+                }
+                cleanup();
+                reject(new Error('Cancelled'));
+            };
+
+            if (signal) {
+                signal.addEventListener('abort', onAbort);
+                cleanup = () => signal.removeEventListener('abort', onAbort);
+            }
+
+            this.requestQueue.push(req);
             this.requestQueue.sort((a, b) => b.priority - a.priority); // Highest priority first
             this.processQueue();
         });
@@ -179,7 +207,13 @@ export class TaskDispatcher {
                     const minWaitMs = Array.from(this.keyCooldowns.values())
                         .filter(c => c > now)
                         .reduce((min, c) => Math.min(min, c - now), Infinity);
-                    
+
+                    if (minWaitMs > 60000 && minWaitMs !== Infinity) {
+                        const req = this.requestQueue.shift();
+                        req?.reject(new Error(`All Gemini API keys are cooling down or in error states. Minimum wait: ${Math.ceil(minWaitMs / 1000)}s.`));
+                        continue;
+                    }
+
                     if (minWaitMs !== Infinity && this.requestQueue[0]?.onWait) {
                         const waitSecs = Math.ceil(minWaitMs / 1000);
                         this.requestQueue[0].onWait(`API Rate Limit hit. Waiting ${waitSecs}s for cooldown...`);

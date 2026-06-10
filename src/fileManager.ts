@@ -15,7 +15,13 @@ export function getSelectedText(): string | null {
     return e.document.getText(e.selection);
 }
 
-export async function getProjectTree(maxFiles = 200): Promise<string> {
+let cachedTree = '';
+let lastTreeScan = 0;
+
+export async function getProjectTree(maxFiles = 200, force = false): Promise<string> {
+    if (!force && cachedTree && (Date.now() - lastTreeScan < 5000)) {
+        return cachedTree;
+    }
     const ws = vscode.workspace.workspaceFolders; if (!ws) return 'No workspace.';
     const root = ws[0].uri;
     const files: string[] = [];
@@ -37,6 +43,9 @@ export async function getProjectTree(maxFiles = 200): Promise<string> {
     await walk(root, '');
     let out = 'Project: ' + ws[0].name + '\n' + files.join('\n');
     if (truncated) out += '\n(showing ' + maxFiles + '/' + total + ' entries — some omitted)';
+    
+    cachedTree = out;
+    lastTreeScan = Date.now();
     return out;
 }
 

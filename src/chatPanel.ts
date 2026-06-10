@@ -19,7 +19,7 @@ import {
     TEST_GENERATION_PROMPT, REFACTORING_PROMPT, DOCUMENTATION_PROMPT, 
     ONBOARDING_PROMPT, DEPENDENCY_UPDATE_PROMPT, PERFORMANCE_PROMPT, SECURITY_PROMPT 
 } from './prompts';
-interface Snap { path: string; content: string; }
+interface Snap { path: string; content: string; exists: boolean; }
 
 export interface ISidebar {
     pushKeyStatus(s: any): void;
@@ -45,7 +45,7 @@ export class ChatPanel {
      private _gen: number = 0;
     private _summary: string = '';
     private _treeHash: string = '';
-    private _pendingDiffs: Map<string, { newContent: string; oldContent: string; msgIdx: number }> = new Map();
+    private _pendingDiffs: Map<string, { newContent: string; oldContent: string; msgIdx: number; exists: boolean }> = new Map();
     private _diffResolvers: Map<string, (v: boolean) => void> = new Map();
     private _cmdResolvers: Map<string, (v: boolean) => void> = new Map();
     private _agent: AgentRunner;
@@ -82,10 +82,10 @@ export class ChatPanel {
 
         this._agent = new AgentRunner({
             post: (m) => this.post(m),
-            send: (messages, onChunk) => sendMessage(messages, onChunk, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s), signal: this._abortController?.signal }),
+            send: (messages, onChunk, signal) => sendMessage(messages, onChunk, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s), signal: signal || this._abortController?.signal }),
             workspaceUri: () => vscode.workspace.workspaceFolders?.[0]?.uri,
             getMode: () => this._mode,
-            recordSnapshot: (fp, old) => { const idx = this._h.length; const sn = this._snaps.get(idx) || []; sn.push({ path: fp, content: old }); this._snaps.set(idx, sn); },
+            recordSnapshot: (fp, old, exists) => { const idx = this._h.length; const sn = this._snaps.get(idx) || []; sn.push({ path: fp, content: old, exists }); this._snaps.set(idx, sn); },
             askCommand: (cmd) => {
                 const cmdId = Math.random().toString(36).substring(7);
                 this.post({ command: 'agentAskCommand', cmdId, cmd });
@@ -102,6 +102,12 @@ export class ChatPanel {
                 return new Promise<boolean>((resolve) => {
                     this._cmdResolvers.set(cmdId, resolve);
                 });
+            },
+            registerSubagent: (id, runner, abort) => {
+                this._subagents.push({ id, runner, abort });
+            },
+            unregisterSubagent: (id) => {
+                this._subagents = this._subagents.filter(s => s.id !== id);
             }
         }, getAgentPrompt());
 
@@ -327,7 +333,6 @@ export class ChatPanel {
                 () => {}, { config: EFFORT.low }
             );
             this._summary = sum.trim();
-            this._h = this._h.slice(cut); // drop summarized raw messages
         } catch { /* keep raw history if summarization fails */ }
     }
 
@@ -345,33 +350,37 @@ export class ChatPanel {
 
             const uri = vscode.Uri.joinPath(ws, e.path);
             let old = '';
-            try { old = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf-8'); } catch {}
+            let exists = false;
+            try { 
+                old = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf-8'); 
+                exists = true;
+            } catch {}
             const { content, failures } = applyEdits(old, e);
             if (failures.length && content === old) {
                 this.post({ command: 'changeCard', path: e.path, summary: "couldn't match edit (search text not found)" });
                 continue;
             }
-            await this._presentChange(e.path, old, content, groupIdx);
+            await this._presentChange(e.path, old, content, groupIdx, exists);
         }
     }
 
     /** Route a computed file change: Ask → diff card + wait; Auto → write now. */
-    private async _presentChange(fp: string, old: string, newContent: string, groupIdx: number) {
-        if (old === newContent) return;
+    private async _presentChange(fp: string, old: string, newContent: string, groupIdx: number, exists: boolean) {
+        if (old === newContent && exists) return;
         const diff = computeSideBySide(old, newContent);
         if (this._mode === 'ask') {
-            this._pendingDiffs.set(fp, { newContent, oldContent: old, msgIdx: groupIdx });
+            this._pendingDiffs.set(fp, { newContent, oldContent: old, msgIdx: groupIdx, exists });
             this.post({ command: 'showDiff', changes: [{ path: fp, diff, badge: old ? 'Modified' : 'new' }] });
             return;
         }
-        await this._writeFile(fp, newContent, old, groupIdx);
+        await this._writeFile(fp, newContent, old, groupIdx, exists);
         this.post({ command: 'showDiff', changes: [{ path: fp, diff, badge: old ? 'Modified' : 'new', applied: true }] });
     }
 
-    private async _writeFile(fp: string, code: string, old: string, msgIdx: number) {
+    private async _writeFile(fp: string, code: string, old: string, msgIdx: number, exists: boolean) {
         const ws = vscode.workspace.workspaceFolders![0].uri;
         const uri = vscode.Uri.joinPath(ws, fp);
-        const sn = this._snaps.get(msgIdx) || []; sn.push({ path: fp, content: old }); this._snaps.set(msgIdx, sn);
+        const sn = this._snaps.get(msgIdx) || []; sn.push({ path: fp, content: old, exists }); this._snaps.set(msgIdx, sn);
         await vscode.workspace.fs.writeFile(uri, Buffer.from(code, 'utf-8'));
     }
 
@@ -384,7 +393,7 @@ export class ChatPanel {
         }
         const pend = this._pendingDiffs.get(fp);
         if (!pend) return;
-        await this._writeFile(fp, pend.newContent, pend.oldContent, pend.msgIdx);
+        await this._writeFile(fp, pend.newContent, pend.oldContent, pend.msgIdx, pend.exists);
         this._pendingDiffs.delete(fp);
         if (always) { this._mode = 'auto-edit'; this.post({ command: 'restoreSettings', mode: 'auto-edit' }); }
     }
@@ -409,7 +418,7 @@ export class ChatPanel {
             if (idx >= msgIdx) {
                 for (const s of sn) {
                     const u = vscode.Uri.joinPath(ws, s.path);
-                    if (s.content) await vscode.workspace.fs.writeFile(u, Buffer.from(s.content, 'utf-8'));
+                    if (s.exists) await vscode.workspace.fs.writeFile(u, Buffer.from(s.content, 'utf-8'));
                     else { try { await vscode.workspace.fs.delete(u); } catch {} }
                 }
                 this._snaps.delete(idx);
@@ -475,12 +484,10 @@ export class ChatPanel {
             if (timeoutId) clearTimeout(timeoutId);
             triageOut = res.text;
         } catch (e: any) {
-            this._busy = false;
-            if (this._cancel) return;
-            const errStr = e.name === 'AbortError' || e.message === 'Cancelled' ? 'Triage timed out or was cancelled.' : e.message;
-            this.post({ command: 'agentStatus', text: 'Triage failed: ' + errStr });
-            this.post({ command: 'error', text: errStr });
-            return;
+            if (this._cancel) { this._busy = false; return; }
+            const errStr = e.name === 'AbortError' || e.message === 'Cancelled' ? 'Triage timed out.' : e.message;
+            console.warn('Triage failed, falling back to direct mode:', errStr);
+            triageOut = '<route target="CODING_PROMPT" />';
         }
 
         if (this._gen !== gen) return;
@@ -534,13 +541,10 @@ export class ChatPanel {
                             this.post(msg);
                         }
                     },
-                    send: (messages, onChunk) => sendMessage(messages, (chunk) => {
-                        onChunk(chunk);
-                        this.post({ command: 'agentProgress', id, log: chunk });
-                    }, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s), signal: subAbort.signal }),
+                    send: (messages, onChunk, signal) => sendMessage(messages, onChunk, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s), signal: signal || subAbort.signal }),
                     workspaceUri: () => vscode.workspace.workspaceFolders?.[0]?.uri,
                     getMode: () => this._mode,
-                    recordSnapshot: (fp, old) => { const idx = this._h.length; const sn = this._snaps.get(idx) || []; sn.push({ path: fp, content: old }); this._snaps.set(idx, sn); },
+                    recordSnapshot: (fp, old, exists) => { const idx = this._h.length; const sn = this._snaps.get(idx) || []; sn.push({ path: fp, content: old, exists }); this._snaps.set(idx, sn); },
                     askCommand: (cmd) => {
                         const cmdId = Math.random().toString(36).substring(7);
                         this.post({ command: 'agentAskCommand', cmdId, cmd });
@@ -557,6 +561,12 @@ export class ChatPanel {
                         return new Promise<boolean>((resolve) => {
                             this._cmdResolvers.set(cmdId, resolve);
                         });
+                    },
+                    registerSubagent: (id, runner, abort) => {
+                        this._subagents.push({ id, runner, abort });
+                    },
+                    unregisterSubagent: (id) => {
+                        this._subagents = this._subagents.filter(s => s.id !== id);
                     }
                 }, getAgentPrompt(profile?.defaultTools) + '\n\n' + sysPrompt, profile?.defaultTools);
 
@@ -837,13 +847,10 @@ export class ChatPanel {
                     this.post(msg);
                 }
             },
-            send: (messages, onChunk) => sendMessage(messages, (chunk) => {
-                onChunk(chunk);
-                this.post({ command: 'agentProgress', id, log: chunk });
-            }, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s), signal: subAbort.signal }),
+            send: (messages, onChunk, signal) => sendMessage(messages, onChunk, { config: this._cfg(), onKeyStatus: (s) => ChatPanel.sidebar?.pushKeyStatus(s), signal: signal || subAbort.signal }),
             workspaceUri: () => worktreeUri,
             getMode: () => this._mode,
-            recordSnapshot: (fp, old) => { const idx = this._h.length; const sn = this._snaps.get(idx) || []; sn.push({ path: fp, content: old }); this._snaps.set(idx, sn); },
+            recordSnapshot: (fp, old, exists) => { const idx = this._h.length; const sn = this._snaps.get(idx) || []; sn.push({ path: fp, content: old, exists }); this._snaps.set(idx, sn); },
             askCommand: (cmd) => {
                 const cmdId = Math.random().toString(36).substring(7);
                 this.post({ command: 'agentAskCommand', cmdId, cmd });
@@ -860,10 +867,16 @@ export class ChatPanel {
                 return new Promise<boolean>((resolve) => {
                     this._cmdResolvers.set(cmdId, resolve);
                 });
+            },
+            registerSubagent: (id, runner, abort) => {
+                this._subagents.push({ id, runner, abort });
+            },
+            unregisterSubagent: (id) => {
+                this._subagents = this._subagents.filter(s => s.id !== id);
             }
         }, getAgentPrompt(profile?.defaultTools) + '\n\n' + profile?.systemPrompt + `\n\nYour specific task: "${task}".`, profile?.defaultTools);
 
-        this._subagents.push({ runner: subagent, abort: this._abortController! });
+        this._subagents.push({ id, runner: subagent, abort: subAbort });
 
         const text = `Initialize specialized agent [${profile.role}] to solve: "${task}"`;
         const subagentPrompt = profile.systemPrompt + `\n\nYour specific task: "${task}".`;
