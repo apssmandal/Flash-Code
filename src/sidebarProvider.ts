@@ -24,7 +24,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         view.webview.onDidReceiveMessage(async (m) => {
             const cfg = vscode.workspace.getConfiguration('flashCode');
             switch (m.command) {
-                case 'ready': this.pushSessions(); break;
+                case 'ready':
+                    this.pushSettings();
+                    this.pushSessions();
+                    break;
+                case 'openDashboard':
+                    vscode.commands.executeCommand('flashCode.openDashboard');
+                    break;
                 case 'newSession':
                     ChatPanel.createOrShow(this.ctx, this.sp); ChatPanel.cur?.newChat(); break;
                 case 'openSession':
@@ -36,7 +42,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 }
                 case 'deleteSession': {
                     const ok = await vscode.window.showWarningMessage('Delete this chat?', { modal: true }, 'Delete');
-                    if (ok === 'Delete') this.sp.deleteSession(m.id);
+                    if (ok === 'Delete') {
+                        this.sp.deleteSession(m.id);
+                        if (ChatPanel.cur && ChatPanel.cur.getSessionId() === m.id) {
+                            ChatPanel.cur.newChat();
+                        }
+                    }
                     break;
                 }
                 case 'getSettings':

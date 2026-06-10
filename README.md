@@ -1,117 +1,260 @@
 # ⚡ Flash Code
 
-[![Visual Studio Marketplace](https://img.shields.io/badge/Marketplace-Flash%20Code-blueviolet?style=for-the-badge&logo=visual-studio-code)](https://marketplace.visualstudio.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Gemini Free Tier](https://img.shields.io/badge/Gemini%20API-Free%20Tier-orange?style=for-the-badge&logo=google-gemini)](https://aistudio.google.com/api-keys)
-[![Ollama Support](https://img.shields.io/badge/Ollama-Local%20Models-darkblue?style=for-the-badge&logo=ollama)](https://ollama.com/)
+<p align="center">
+  <img src="resources/icon.png" alt="Flash Code Logo" width="96" />
+</p>
 
-**Flash Code** is an open-source, autonomous AI coding assistant running directly inside VS Code. It is built to offer **high-efficiency, zero-cost coding** by leveraging Gemini's powerful free-tier models without hitting rate limits. By multiplexing a pool of multiple Gemini API keys in a smart round-robin wheel, it handles request throttling, rate-limit cooldowns, and automatic recovery seamlessly.
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/"><img src="https://img.shields.io/badge/VS%20Marketplace-Flash%20Code-blueviolet?style=for-the-badge&logo=visual-studio-code" alt="Marketplace"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
+  <a href="https://ai.google.dev/"><img src="https://img.shields.io/badge/Gemini%20API-Free%20Tier-orange?style=for-the-badge&logo=google-gemini" alt="Gemini Free Tier"></a>
+  <a href="https://ollama.com/"><img src="https://img.shields.io/badge/Ollama-Local%20Models-darkblue?style=for-the-badge" alt="Ollama"></a>
+</p>
+
+<p align="center">
+  <strong>An open-source, autonomous AI coding assistant for VS Code — powered by Gemini &amp; Ollama.</strong><br/>
+  Claude Code-style agentic loops · Round-robin multi-key rate-limit bypass · Parallel subagents · Beautiful diff viewer
+</p>
+
+---
+
+## ✨ What is Flash Code?
+
+Flash Code is a **production-grade AI coding assistant** that lives inside VS Code. It goes far beyond simple autocomplete or single-turn chat — it runs fully autonomous agent loops, delegates tasks to specialized subagents, reads and writes files, executes terminal commands, and presents changes in a beautiful, Git-style diff viewer — all for **free**, using Gemini's free-tier API.
 
 ---
 
 ## 🚀 Key Features
 
-* **Multi-Key Rate-Limit Bypass**: Connect multiple free-tier Gemini API keys. Flash Code automatically rotates through keys in a round-robin cycle, throttling requests to respect free-tier RPM limits, and marking keys for cooldowns if they receive a `429 Rate Limit` response.
-* **Autonomous Agent Loop (Auto Mode)**: Ask a goal, and watch the agent create a task list, read/search/edit files, run tool loops, and stream results live.
-* **Subagents & Delegation**: Complex tasks are automatically broken down and delegated to specialized background subagents (Researcher, Tester, Linter, Refactorer) who run their own autonomous loops in parallel.
-* **Terminal Command Execution**: The agent can run non-interactive terminal commands (like compiling, linting, running tests) directly within your workspace and parse the outputs to automatically fix errors.
-* **Interactive Chat Modes**: 
-  * **Ask before edit**: Review file changes side-by-side (red/green diff cards) before they are written to disk.
-  * **Edit automatically**: Applies file modifications instantly.
-  * **Plan mode**: Discuss architecture, design patterns, and output markdown plans without writing files.
-* **Smart Context Compaction**: Automatically summarizes older parts of the conversation to save context window space and reduce token usage, keeping the agent responsive and cheap to run.
-* **Effort Slider**: Adjust the agent's thinking budget and token limit (`Low`, `Medium`, `High`, `xHigh`, `Max`) based on the difficulty of the task.
-* **Ollama Integration**: Run local, private coding models (like `qwen2.5-coder` or `llama3`) with automatic fallback to Gemini if Ollama goes offline.
+### 🤖 Autonomous Agentic Loops
+Give Flash Code a high-level goal and it will break it down into a task list, read your codebase, plan a solution, write/edit/delete files, run terminal commands, read outputs, and fix errors — all without hand-holding. Powered by a real tool-call loop with live streaming output.
+
+### 🔑 Multi-Key Rate-Limit Bypass
+Connect **multiple free-tier Gemini API keys**. Flash Code manages a round-robin key wheel with:
+- **Per-key pacing** — throttles requests to stay safely under the 15 RPM free-tier limit.
+- **Smart cooldowns** — when a key receives a `429 Rate Limit`, it is placed on a timed cooldown and the current request is instantly rerouted to the next healthy key.
+- **Automatic retry** — `500`/`503` overload responses trigger a back-off-and-retry on the same key.
+
+### 👥 Parallel Subagents
+Complex tasks are automatically split and delegated to specialized background workers that run concurrently:
+
+| Agent | Role |
+|-------|------|
+| 🔍 **Scout** | Deep codebase exploration, API research, dependency analysis |
+| 🧪 **QA Engineer** | Writing and running tests, verifying correctness |
+| 🧹 **Code Auditor** | Linting, style enforcement, dead code removal |
+| 🏗️ **Architect** | High-level redesigns and large refactoring tasks |
+
+### 💬 Four Chat Modes
+
+| Mode | Behaviour |
+|------|-----------|
+| **Ask Before Edit** | Review every file change in a diff viewer before it is applied |
+| **Auto Edit** | Apply changes to disk instantly, no confirmation needed |
+| **Plan** | Discuss architecture and produce markdown plans, no file writes |
+| **Autonomous** | Full agent loop — plans, codes, tests, and fixes in one shot |
+
+### 🖥️ IDE-Style Diff Viewer
+Changes are shown in a sleek, **single-pane diff view** inspired by Git:
+- 🟥 **Removed lines** in red · 🟩 **Added lines** in green
+- **Expand / Collapse** — new files show the first 25 lines by default with a one-click expand button
+- **Multi-hunk view** — for edits touching multiple regions of a file, each hunk is shown separately with a visual gap indicator (`··· N lines ···`) so you always know where in the file the change lives
+
+### 🌐 Production-Quality Web Generation
+When asked to create a website or web UI, Flash Code generates **premium, production-ready code** — not boilerplate. Enforced standards include:
+- Modern Google Fonts, curated color palettes, dark mode
+- Glassmorphism, smooth gradients, micro-animations
+- Semantic HTML5, full SEO meta tags, responsive layouts
+- Zero placeholder images — real visual content generated automatically
+
+### ⚙️ Terminal Command Execution
+The agent can run non-interactive shell commands (`npm install`, `tsc`, test runners, linters) directly inside your workspace, parse stdout/stderr, and automatically fix any errors it finds.
+
+### 📦 Smart Context Compaction
+When conversation history grows large, Flash Code automatically compresses older turns into a concise summary — keeping the agent sharp, cheap to run, and within context window limits.
+
+### 🎛️ Effort Slider
+Five thinking budget levels (`Low` → `Medium` → `High` → `xHigh` → `Max`) let you trade off speed vs. thoroughness per task.
+
+### 🦙 Ollama Integration
+Run fully **local, private** coding models (e.g. `qwen2.5-coder`, `llama3`) with automatic fallback to Gemini if Ollama goes offline.
 
 ---
 
-## 🛠️ How It Works (Multi-Key Architecture)
+## 🏗️ Architecture Overview
 
-Flash Code manages API requests through a client-side pacing queue and a round-robin key manager. Here is the request flow:
+```
+User Prompt
+    │
+    ▼
+┌──────────────────────────────────┐
+│         Chat Panel (UI)          │  ← 4 modes: Ask / Auto / Plan / Auto
+│  Streams live tokens to webview  │
+└────────────┬─────────────────────┘
+             │
+    ┌─────────▼──────────┐
+    │   Agent Runner     │  ← tool-call loop: read, write, search, run
+    │  (agentRunner.ts)  │
+    └─────────┬──────────┘
+              │  spawns parallel workers
+    ┌─────────▼──────────┐
+    │  Subagent Registry  │  ← Scout | QA Engineer | Code Auditor | Architect
+    └─────────┬──────────┘
+              │
+    ┌─────────▼──────────┐
+    │   Backend Manager  │  ← Gemini (multi-key) · Ollama (local)
+    └────────────────────┘
+```
+
+### Multi-Key Request Flow
 
 ```mermaid
 graph TD
-    A[User Prompt / Agent Step] --> B[Request Queue & Throttler]
-    B --> C{Pacing Rate OK?}
-    C -- No --> D[Delay Request]
+    A[Agent Step / User Prompt] --> B[Pacing Throttler]
+    B --> C{Under RPM limit?}
+    C -- No --> D[Delay & Requeue]
     D --> B
-    C -- Yes --> E[Key Wheel Selector]
-    E --> F{Key in Cooldown?}
-    F -- Yes --> G[Rotate to Next Key]
+    C -- Yes --> E[Round-Robin Key Wheel]
+    E --> F{Key on cooldown?}
+    F -- Yes --> G[Rotate to next key]
     G --> E
     F -- No --> H[Call Gemini API]
-    H --> I{Response Code?}
-    I -- 200 OK --> J[Stream Output to UI]
-    I -- 429 Rate Limit --> K[Put Key on Cooldown & Retry Next Key]
+    H --> I{HTTP Status}
+    I -- 200 --> J[Stream to UI]
+    I -- 429 --> K[Cooldown key · Retry next]
     K --> E
-    I -- 500/503 Overload --> L[Wait & Retry Same Key]
+    I -- 500/503 --> L[Back-off · Retry same key]
     L --> H
 ```
 
-* **Pacing Throttler**: Restricts average query rates per key to slightly under 15 RPM to avoid trigger-happy rate limiters.
-* **Smart Cooldowns**: If a key gets hit with a `429`, Flash Code places it on a dynamic cooldown and immediately redirects the current query to the next available key in the wheel, maintaining uninterrupted developer flow.
-
 ---
 
-## 📦 Setup & Installation
+## 📦 Installation
 
 ### Prerequisites
 
-* [Node.js](https://nodejs.org/) (v18 or higher)
-* [VS Code](https://code.visualstudio.com/) (v1.85.0 or higher)
+- [Node.js](https://nodejs.org/) v18 or higher
+- [VS Code](https://code.visualstudio.com/) v1.85.0 or higher
 
-### Build and Package Locally
+### Build & Install from Source
 
-1. Clone this repository and navigate into the folder:
-   ```bash
-   git clone https://github.com/yourusername/flash-code.git
-   cd flash-code
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Compile the TypeScript code:
-   ```bash
-   npm run compile
-   ```
-4. Package the extension to a `.vsix` file:
-   ```bash
-   npx @vscode/vsce package --allow-missing-repository
-   ```
-5. Install the generated `.vsix` extension in VS Code:
-   * **CLI**: `code --install-extension flash-code-1.0.0.vsix`
-   * **VS Code UI**: Open the Extensions view (`Ctrl+Shift+X`), click the `...` menu in the top-right, select **Install from VSIX...**, and pick the `.vsix` file.
+```bash
+# 1. Clone the repository
+git clone https://github.com/apssmandal/Flash-Code.git
+cd Flash-Code
+
+# 2. Install dependencies
+npm install
+
+# 3. Compile TypeScript
+npm run compile
+
+# 4. Package the extension
+npx @vscode/vsce package --allow-missing-repository
+
+# 5. Install the .vsix in VS Code
+code --install-extension flash-code-2.0.0.vsix
+```
+
+> **VS Code UI**: Open Extensions (`Ctrl+Shift+X`) → `···` menu → **Install from VSIX…** → select the `.vsix` file.
 
 ---
 
 ## ⚙️ Configuration
 
-1. Press **Ctrl+Shift+A** (or **Cmd+Shift+A** on Mac) to open the Flash Code panel.
-2. Click the **Gear icon (⚙)** in the sidebar view.
-3. Add one or more Gemini API keys (obtainable for free from the [Google AI Studio](https://aistudio.google.com/)).
-4. (Optional) Set up Ollama by ensuring it is running locally (`http://localhost:11434`) and choose your model.
+Press **`Ctrl+Shift+A`** (or **`Cmd+Shift+A`** on Mac) to open Flash Code, then click the **Gear icon ⚙** to configure:
 
-### Available Slash Commands
+| Setting | Description |
+|---------|-------------|
+| `flashCode.gemini.apiKeys` | Array of free-tier Gemini API keys for round-robin rotation |
+| `flashCode.gemini.model` | Active Gemini model (`gemini-2.5-flash`, etc.) |
+| `flashCode.ollama.url` | Ollama server URL (default: `http://localhost:11434`) |
+| `flashCode.ollama.model` | Local model name (e.g. `qwen3-coder`) |
+| `flashCode.mode` | Default chat mode (`ask`, `auto-edit`, `plan`, `autonomous`) |
+| `flashCode.effort` | Default effort level (`low` · `medium` · `high` · `xhigh` · `max`) |
+| `flashCode.rateLimit.requestsPerMinute` | Global RPM cap across all keys (default: `15`) |
 
-Type `/` in the chat input for shortcuts:
-* `/new` — Start a fresh workspace chat session.
-* `/clear` — Clear history of the active session.
-* `/compact` — Compress the current chat history into a summary to save tokens.
-* `/file` — Send the contents of the currently active editor file as context.
-* `/context` — Select and add any workspace file to the chat context.
-* `/ask` / `/plan` / `/auto` — Switch interaction modes.
-* `/model` — Quick-switch between Gemini models.
-* `/effort` — Toggle the reasoning and token effort levels.
+> Get free Gemini API keys at [Google AI Studio](https://aistudio.google.com/).
+
+---
+
+## 💬 Slash Commands
+
+Type `/` in the chat input to access shortcuts:
+
+| Command | Action |
+|---------|--------|
+| `/new` | Start a fresh session |
+| `/clear` | Clear current session history |
+| `/compact` | Compress history into a summary to save tokens |
+| `/file` | Inject the active editor file as context |
+| `/context` | Pick any workspace file to add as context |
+| `/ask` · `/plan` · `/auto` | Switch chat mode |
+| `/model` | Quick-switch Gemini model |
+| `/effort` | Toggle reasoning budget |
+
+---
+
+## 📂 Project Structure
+
+```
+flash-code/
+├── src/
+│   ├── extension.ts          # Extension entry point & command registration
+│   ├── chatPanel.ts          # Webview panel, message routing, mode switching
+│   ├── agentRunner.ts        # Core agentic tool-call loop
+│   ├── taskOrchestrator.ts   # Task planning, delegation & progress tracking
+│   ├── prompts.ts            # All system prompts & WEB_DESIGN_DIRECTIVES
+│   ├── rulesEngine.ts        # .flash/rules.md project-level rule loader
+│   ├── sessionProvider.ts    # Session persistence & sidebar tree
+│   ├── sidebarProvider.ts    # VS Code sidebar webview provider
+│   ├── fileManager.ts        # Workspace file read/write utilities
+│   ├── diffUtils.ts          # Unified diff parsing & hunk extraction
+│   ├── editUtils.ts          # Patch application & conflict detection
+│   ├── gitUtils.ts           # Git status, staging & diff helpers
+│   ├── storage.ts            # Extension state persistence
+│   ├── dashboardPanel.ts     # Mission Control dashboard webview
+│   ├── agent/
+│   │   ├── agentCore.ts      # Shared agent base types
+│   │   └── types.ts          # Tool call & message type definitions
+│   ├── backends/
+│   │   ├── backendManager.ts # Backend switcher (Gemini ↔ Ollama)
+│   │   ├── gemini.ts         # Gemini client with multi-key wheel & pacing
+│   │   ├── ollama.ts         # Ollama streaming client
+│   │   └── types.ts          # Backend interface types
+│   └── subagents/
+│       └── registry.ts       # Subagent profiles (Scout, QA, Auditor, Architect)
+├── media/
+│   ├── chat.html             # Main chat UI webview
+│   ├── sidebar.html          # Session list sidebar webview
+│   └── dashboard.html        # Mission Control dashboard
+├── resources/
+│   ├── icon.png              # Extension icon (PNG)
+│   ├── icon.svg              # Extension icon (SVG)
+│   └── logo_main.svg         # Brand logo
+├── LICENSE
+├── package.json              # Extension manifest & VS Code contributions
+├── tsconfig.json             # TypeScript compiler config
+└── .gitignore
+```
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions to make Flash Code even more efficient! Feel free to:
-- Open issues for bug reports or feature requests.
-- Submit Pull Requests to improve the agent loops, UI, or key throttling strategies.
+Contributions are welcome! To get started:
 
-*Developed by **Arpan Mandal**.*
+1. Fork the repository and create a feature branch.
+2. Run `npm run watch` for continuous compilation during development.
+3. Press `F5` in VS Code to launch the Extension Development Host.
+4. Open a Pull Request with a clear description of your changes.
 
-License: **MIT**
+Please open an issue first for significant feature changes so we can discuss the approach.
+
+---
+
+## 📄 License
+
+**MIT** — free to use, modify, and distribute.
+
+*Developed with ❤️ by **Arpan Mandal**.*

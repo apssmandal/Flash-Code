@@ -6,6 +6,9 @@ import { applyEdits } from './editUtils';
 import { getProfileByRole } from './subagents/registry';
 import { spawn } from 'child_process';
 import { stripVTControlCharacters } from 'util';
+import { TaskDispatcher } from './taskOrchestrator';
+import { RulesEngine } from './rulesEngine';
+import { EDIT_PROTOCOLS, TOOL_DEFINITIONS, AUTONOMOUS_DIRECTIVES, WEB_DESIGN_DIRECTIVES } from './prompts';
 
 export const AGENT_PROMPT =
 `You are "Flash Code", a state-of-the-art autonomous coding agent executing directly inside a VS Code workspace.
@@ -14,65 +17,27 @@ You solve tasks systematically by planning, invoking workspace tools, observing 
 =========================================
 OUTPUT FORMAT & XML TOOL TAGS
 =========================================
-Your output can contain text (prose) and tool execution tags. All tool tags MUST be raw, unescaped XML (NEVER wrap tool tags in markdown code blocks like \`\`\`xml ... \`\`\`).
-You can emit the following tags:
+Your output can contain text (prose) and tool execution tags. All tool tags MUST be raw, unescaped XML (NEVER wrap tool tags in markdown code blocks).
 
-  <think>your private step-by-step reasoning</think>
-  <status>a short, single-line progress note in the present tense (e.g., "Compiling source files...")</status>
-  
-  <task_list>[{"id":"1","desc":"task description","status":"pending"}]</task_list>
-     (Emitted on the FIRST turn only to outline your checklist. Statuses: "pending" | "running" | "done" | "failed")
-     
-  <read_file path="relative/path"/>
-     (Inspect the content of a file. Path must be relative to the workspace root.)
-     
-  <list_files/>
-     (Prints the workspace directory file tree.)
-     
-  <search_files pattern="regex_or_string" glob="**/*.ts"/>
-     (Grep-search files in the workspace matching the regex pattern and optional glob filter.)
-     
-  <create path="relative/path">COMPLETE new file content</create>
-     (Create a new file with its full boilerplate, imports, and content.)
-     
-  <edit path="relative/path">
-  <<<<<<< SEARCH
-  exact existing lines, copied verbatim
-  =======
-  the new lines to replace them
-  >>>>>>> REPLACE
-  </edit>
-     (Apply targeted changes to an existing file using SEARCH/REPLACE blocks. SEARCH block must match verbatim, including whitespace and indentation.)
+<Tool_Registry>
+` + TOOL_DEFINITIONS + `
+  <status>a short progress note (e.g., "Compiling source files...")</status>
+  <task_list>[{"id":"1","desc":"task","status":"pending"}]</task_list>
+  <spawn_agent role="Architect|Inspector|QA|Stylist|Sculptor" task="subtask description"/>
+</Tool_Registry>
 
-  <run_command cmd="shell command to run"/>
-     (Execute a terminal command in the workspace. All commands must be NON-INTERACTIVE. Use auto-approve flags like -y, --yes, --force, or -m "msg" since no terminal input stream exists.)
-
-  <run_code lang="js|py|sh">your custom script code</run_code>
-     (Write a custom script dynamically in Node.js (js), Python (py), or Shell/Powershell (sh) to perform checks, computation, or search routines, and execute it within the workspace shell. The code must be enclosed directly inside the tag.)
-
-  <spawn_agent role="Researcher|Tester|Linter|Refactorer" task="subtask description"/>
-     (Spawn a background subagent to work in parallel on specialized subtasks. They run concurrently and report findings back.)
-
-  <ask_user>{"questions":[{"header":"Header","question":"Question text","options":[{"label":"A","description":"desc"}],"multiSelect":false}]}</ask_user>
-     (Present choices/forms to the user. MultiSelect false renders radio buttons; true renders checkboxes.)
+` + EDIT_PROTOCOLS + `
 
 =========================================
 CRITICAL OPERATIONAL RULES
 =========================================
-1. PLANNING: Always emit a <task_list> first, then begin execution. Keep your status messages clear.
-2. BATCHING READS: If you need to inspect multiple files, emit ALL <read_file> tags in a single turn. Do not retrieve them sequentially over multiple turns.
-3. BATCHING WRITES: Emit multiple <edit> and/or <create> tags in a single turn to apply all logical code modifications together.
-4. EXACT SEARCH/REPLACE: The SEARCH block in <edit> tags MUST match the existing code precisely. If a write fails, read the file again to obtain the exact text. Never guess or omit code structure.
-5. NON-INTERACTIVE COMMANDS: When using <run_command>, ensure the command does not prompt for input. Avoid interactive interactive prompts (e.g., do NOT run "npm init" without "-y").
-6. USER CONFIRMATION: For crucial decisions (frameworks, tech stack, naming, layouts, styling, libraries), stop and ask the user using <ask_user> with concrete options.
-7. PARALLEL DELEGATION: Outsource testing, linting, code auditing, or multi-file research to specialized subagents. Summarize their results in your final prose.
-8. CONCLUSION: When the task is complete, return a concise plain-text summary of your changes. Do NOT emit any tool tags in your final completion turn.`;
+` + AUTONOMOUS_DIRECTIVES + '\n\n' + WEB_DESIGN_DIRECTIVES;
 
 interface ToolCall { tool: string; attrs: Record<string, string>; body: string; raw: string; }
 
 export interface AgentDeps {
     post: (m: any) => void;
-    send: (messages: Msg[], onChunk: (t: string) => void) => Promise<{ text: string; backend: string }>;
+    send: (messages: Msg[], onChunk: (t: string) => void) => Promise<{ text: string; backend: string; finishReason?: string }>;
     workspaceUri: () => vscode.Uri | undefined;
     getMode: () => string;                 // 'ask' | 'auto-edit' | 'autonomous'
     recordSnapshot: (path: string, old: string) => void;
@@ -93,7 +58,11 @@ export class AgentRunner {
     async run(userText: string, history: Msg[]): Promise<string> {
         this._cancelled = false;
         const tree = await getProjectTree();
-        const sys = this.systemPrompt + '\n\nProject structure:\n' + tree;
+        const rules = RulesEngine.getInstance().getProjectRules();
+        const sys = this.systemPrompt
+            + `\n\nCurrent Date and Time: ${new Date().toLocaleString()}`
+            + (rules ? `\n\n${rules}` : '')
+            + '\n\nProject structure:\n' + tree;
         const work: Msg[] = [...history.slice(-8), { role: 'user', content: userText }];
         let finalProse = '';
 
@@ -103,7 +72,7 @@ export class AgentRunner {
 
                 const messages: Msg[] = [{ role: 'system', content: sys }, ...work];
                 this.d.post({ command: 'agentStatus', text: 'Thinking…' });
-                const { text: buf } = await this.d.send(messages, () => { /* tokens buffered; cards render per-turn */ });
+                const { text: buf, finishReason } = await this.d.send(messages, () => { /* tokens buffered; cards render per-turn */ });
                 work.push({ role: 'assistant', content: buf });
 
                 // Render think / status / task_list segments.
@@ -125,13 +94,25 @@ export class AgentRunner {
                     continue;
                 }
 
+                if (finishReason === 'MAX_TOKENS') {
+                    this.d.post({ command: 'agentStatus', text: 'Resuming from token limit…' });
+                    work.push({ role: 'user', content: '[SYSTEM NOTE: Your last response hit the output token limit. Please continue exactly where you left off, and remember to close any XML tags if they were cut off.]' });
+                    continue;
+                }
+
                 const calls = this.parseTools(buf);
 
                 // Prose outside of tags = the model's narration / final answer.
                 const prose = stripTags(buf).trim();
                 if (prose) { this.d.post({ command: 'agentProse', text: prose }); finalProse = prose; }
 
-                if (!calls.length) { break; } // final answer
+                if (!calls.length) { 
+                    if (tl) {
+                        work.push({ role: 'user', content: 'Task list received. Please proceed with execution by emitting tool tags.' });
+                        continue;
+                    }
+                    break; // final answer
+                }
 
                 // Execute: run all tool calls in the response.
                 const results: string[] = [];
@@ -147,6 +128,11 @@ export class AgentRunner {
                         subagentPromises.push(this.doSpawn(c));
                     } else if (c.tool === 'run_command') {
                         results.push(await this.doCommand(c));
+                    
+                    } else if (['overwrite_file', 'append_file'].includes(c.tool)) {
+                        results.push(await this.doAdvancedWrite(c));
+                    } else if (['fetch_url','search_web','delete_file','rename_file','read_dir','git_status','git_diff','git_commit','git_log','git_blame','create_branch','run_tests','search_regex','npm_install','curl_request','read_json','copy_file','get_file_info','create_dir','format_json','get_env_var','base64_encode','base64_decode','zip_dir','unzip_file'].includes(c.tool)) {
+                        results.push(await this.doAdvancedRead(c));
                     } else if (c.tool === 'run_code') {
                         results.push(await this.doRunCode(c));
                     } else {
@@ -174,13 +160,23 @@ export class AgentRunner {
             for (const a of matchAllPairs(attrStr, /(\w+)\s*=\s*"([^"]*)"/g)) attrs[a[0]] = a[1];
             calls.push({ tool, attrs, body, raw });
         };
-        for (const m of matchAllFull(buf, /<(read_file|list_files|search_files)([^>]*?)\/?>/g)) push(m[1], m[2] || '', '', m[0]);
-        for (const m of matchAllFull(buf, /<edit([^>]*?)>([\s\S]*?)<\/edit>/g)) push('edit', m[1] || '', m[2] || '', m[0]);
-        for (const m of matchAllFull(buf, /<create([^>]*?)>([\s\S]*?)<\/create>/g)) push('create', m[1] || '', m[2] || '', m[0]);
-        for (const m of matchAllFull(buf, /<ask_user>([\s\S]*?)<\/ask_user>/g)) push('ask_user', '', m[1] || '', m[0]);
-        for (const m of matchAllFull(buf, /<spawn_agent([^>]*?)\/?>/g)) push('spawn_agent', m[1] || '', '', m[0]);
-        for (const m of matchAllFull(buf, /<run_command([^>]*?)\/?>/g)) push('run_command', m[1] || '', '', m[0]);
-        for (const m of matchAllFull(buf, /<run_code([^>]*?)>([\s\S]*?)<\/run_code>/g)) push('run_code', m[1] || '', m[2] || '', m[0]);
+        // CRITICAL: Strip out thought blocks so we don't accidentally execute tools hallucinated inside them
+        const activeBuf = buf.replace(/<think\b[^>]*>[\s\S]*?<\/think>/g, '').replace(/<thought\b[^>]*>[\s\S]*?<\/thought>/g, '');
+        for (const m of matchAllFull(activeBuf, /<(read_file|list_files|search_files)([^>]*?)\/?>/g)) push(m[1], m[2] || '', '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<edit([^>]*?)>([\s\S]*?)<\/edit>/g)) push('edit', m[1] || '', m[2] || '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<create([^>]*?)>([\s\S]*?)<\/create>/g)) push('create', m[1] || '', m[2] || '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<ask_user>([\s\S]*?)<\/ask_user>/g)) push('ask_user', '', m[1] || '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<spawn_agent([^>]*?)\/?>/g)) push('spawn_agent', m[1] || '', '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<run_command([^>]*?)\/?>/g)) push('run_command', m[1] || '', '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<run_code([^>]*?)>([\s\S]*?)<\/run_code>/g)) push('run_code', m[1] || '', m[2] || '', m[0]);
+
+        const toolsNoBody = ['fetch_url','search_web','delete_file','rename_file','read_dir','git_status','git_diff','git_commit','git_log','git_blame','create_branch','run_tests','search_regex','npm_install','curl_request','read_json','copy_file','get_file_info','create_dir','format_json','get_env_var','base64_encode','base64_decode','zip_dir','unzip_file'];
+        for (const t of toolsNoBody) {
+            for (const m of matchAllFull(activeBuf, new RegExp(`<${t}([^>]*?)\/?>`, 'g'))) push(t, m[1] || '', '', m[0]);
+        }
+        for (const m of matchAllFull(activeBuf, /<overwrite_file([^>]*?)>([\s\S]*?)<\/overwrite_file>/g)) push('overwrite_file', m[1] || '', m[2] || '', m[0]);
+        for (const m of matchAllFull(activeBuf, /<append_file([^>]*?)>([\s\S]*?)<\/append_file>/g)) push('append_file', m[1] || '', m[2] || '', m[0]);
+
         // Keep document order so a write/ask appearing before reads is handled correctly.
         calls.sort((a, b) => buf.indexOf(a.raw) - buf.indexOf(b.raw));
         return calls;
@@ -283,13 +279,19 @@ export class AgentRunner {
         this.d.post({ command: 'agentSpawn', id, role, task });
         this.d.post({ command: 'agentProgress', id, percentage: 10, log: `Initializing parallel agent [${role}]...` });
 
+        const dispatcher = TaskDispatcher.getInstance();
+        dispatcher.registerAgent(id, role, task);
+        // Do NOT create a worktree for child agents; they inherit the parent's worktree!
+
         try {
             const profile = getProfileByRole(role);
-            const sysPrompt = profile.systemPrompt + `\n\nYour specific task is: "${task}".`;
+            const rules = RulesEngine.getInstance().getProjectRules();
+            const sysPrompt = profile.systemPrompt + '\n\n' + WEB_DESIGN_DIRECTIVES + (rules ? `\n\n${rules}` : '') + `\n\nYour specific task is: "${task}".`;
 
             const subagent = new AgentRunner({
                 post: (msg) => {
                     if (msg.command === 'agentStatus') {
+                        dispatcher.updateAgent(id, 'Executing', msg.text);
                         this.d.post({ command: 'agentProgress', id, log: `[Status] ${msg.text}` });
                     } else if (msg.command === 'agentThinking') {
                         this.d.post({ command: 'agentProgress', id, log: `[Thinking] ${msg.text}` });
@@ -300,10 +302,12 @@ export class AgentRunner {
                     } else if (msg.command === 'agentToolResult') {
                         this.d.post({ command: 'agentProgress', id, log: `[Tool Result] ${msg.success ? 'Success' : 'Failed'}: ${msg.output}` });
                     } else if (msg.command === 'agentTaskList') {
+                        dispatcher.updateAgent(id, 'Planning', 'Created plan');
                         this.d.post({ command: 'agentProgress', id, log: `[Plan] ${JSON.stringify(msg.tasks)}` });
                     } else if (msg.command === 'agentProse') {
                         this.d.post({ command: 'agentProgress', id, log: msg.text });
                     } else if (msg.command === 'agentError') {
+                        dispatcher.updateAgent(id, 'Error', msg.message);
                         this.d.post({ command: 'agentProgress', id, log: `[Error] ${msg.message}` });
                     } else if (msg.command === 'showDiff') {
                         this.d.post(msg);
@@ -331,17 +335,19 @@ export class AgentRunner {
 
             const finalText = await subagent.run(`Start execution of task: "${task}"`, subHistory);
 
+            dispatcher.updateAgent(id, 'Completed', 'Subtask completed successfully.');
             this.d.post({ command: 'agentProgress', id, percentage: 100, log: 'Worker execution complete.' });
             this.d.post({ command: 'agentFinish', id, success: true, log: '\n--- Worker Finished ---' });
             return `[Subagent ${role}] completed task: ${task}. Result:\n${finalText}`;
         } catch (e: any) {
+            dispatcher.updateAgent(id, 'Error', `Failed: ${e.message}`);
             this.d.post({ command: 'agentFinish', id, success: false, log: `\nError encountered: ${e.message}` });
             return `[Subagent ${role}] failed task: ${task}. Error: ${e.message}`;
         }
     }
 
     private async doCommand(c: ToolCall, bypassAsk = false): Promise<string> {
-        const cmd = c.attrs.cmd;
+        const cmd = c.attrs.command || c.attrs.cmd;
         if (!cmd) return '[run_command] Error: no command specified.';
 
         const mode = this.d.getMode();
@@ -466,6 +472,208 @@ export class AgentRunner {
             } catch {}
         }
     }
+
+    private async doAdvancedWrite(c: ToolCall): Promise<string> {
+        const ws = this.d.workspaceUri();
+        const fp = c.attrs.path;
+        if (!ws || !fp) return '[' + c.tool + '] missing workspace or path';
+        const uri = vscode.Uri.joinPath(ws, fp);
+        try {
+            if (c.tool === 'overwrite_file') {
+                await vscode.workspace.fs.writeFile(uri, Buffer.from(c.body, 'utf-8'));
+                return '[' + c.tool + ' ' + fp + '] file overwritten successfully.';
+            } else if (c.tool === 'append_file') {
+                let old = '';
+                try { old = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf-8'); } catch {}
+                const newContent = old + (old.endsWith('\n') ? '' : '\n') + c.body;
+                await vscode.workspace.fs.writeFile(uri, Buffer.from(newContent, 'utf-8'));
+                return '[' + c.tool + ' ' + fp + '] content appended successfully.';
+            }
+        } catch (e: any) {
+            return '[' + c.tool + ' ' + fp + '] ERROR: ' + e.message;
+        }
+        return '';
+    }
+
+    private async doAdvancedRead(c: ToolCall): Promise<string> {
+        this.d.post({ command: 'agentToolCall', id: c.raw.length + '', tool: c.tool, detail: JSON.stringify(c.attrs) });
+        
+        const cmdMap: Record<string, string> = {
+            'git_status': 'git status --short',
+            'git_diff': 'git diff ' + (c.attrs.path || ''),
+            'git_commit': 'git add . && git commit -m "' + (c.attrs.message || 'auto commit') + '"',
+            'git_log': 'git log -n ' + (c.attrs.n || '5') + ' --oneline',
+            'git_blame': 'git blame -L ' + (c.attrs.line || '1') + ',' + (c.attrs.line || '1') + ' ' + (c.attrs.path || ''),
+            'create_branch': 'git checkout -b ' + (c.attrs.name || 'new-branch'),
+            'npm_install': 'npm install ' + (c.attrs.packages || ''),
+            'run_tests': c.attrs.command || 'npm run test',
+            'search_regex': 'findstr /s /c:"' + (c.attrs.pattern || '') + '" *.*',
+            'zip_dir': process.platform === 'win32' ? `powershell Compress-Archive -Path "${c.attrs.src}\\*" -DestinationPath "${c.attrs.dest}"` : `zip -r "${c.attrs.dest}" "${c.attrs.src}"`,
+            'unzip_file': process.platform === 'win32' ? `powershell Expand-Archive -Path "${c.attrs.src}" -DestinationPath "${c.attrs.dest}"` : `unzip "${c.attrs.src}" -d "${c.attrs.dest}"`
+        };
+
+        if (cmdMap[c.tool]) {
+            return new Promise(resolve => {
+                const child = require('child_process').exec(cmdMap[c.tool], { cwd: this.d.workspaceUri()?.fsPath });
+                let out = '';
+                child.stdout?.on('data', (d: any) => out += d);
+                child.stderr?.on('data', (d: any) => out += d);
+                child.on('close', () => {
+                    this.d.post({ command: 'agentToolResult', tool: c.tool, success: true, output: out.length + ' bytes' });
+                    resolve('[' + c.tool + ']\n' + (out.slice(0, 4000) || '(no output)'));
+                });
+            });
+        }
+
+        try {
+            const ws = this.d.workspaceUri();
+            
+            if (c.tool === 'fetch_url') {
+                if (!c.attrs.url) return '[fetch_url] Error: url required.';
+                const res = await fetch(c.attrs.url);
+                return '[fetch_url]\n' + clip(await res.text(), 6000);
+            }
+            if (c.tool === 'curl_request') {
+                const method = c.attrs.method || 'GET';
+                let headers = {};
+                try { if (c.attrs.headers) headers = JSON.parse(c.attrs.headers); } catch {}
+                const res = await fetch(c.attrs.url, { method, headers, body: c.attrs.body || undefined });
+                return '[curl_request]\n' + clip(await res.text(), 6000);
+            }
+            if (c.tool === 'search_web') {
+                const query = c.attrs.query;
+                if (!query) {
+                    return '[search_web] Error: query attribute is missing.';
+                }
+                try {
+                    const url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query);
+                    const res = await fetch(url, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                        }
+                    });
+                    if (!res.ok) {
+                        return `[search_web] HTTP error! Status: ${res.status}`;
+                    }
+                    const html = await res.text();
+                    const blocks = html.split('result__body');
+                    const results: { title: string; url: string; snippet: string }[] = [];
+                    
+                    for (let i = 1; i < blocks.length; i++) {
+                        const block = blocks[i];
+                        
+                        const titleMatch = block.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/);
+                        let title = titleMatch ? titleMatch[1] : '';
+                        title = title.replace(/<[^>]+>/g, '').trim();
+                        
+                        const urlMatch = block.match(/href="([^"]+)"/);
+                        let url = urlMatch ? urlMatch[1] : '';
+                        if (url.startsWith('//')) {
+                            url = 'https:' + url;
+                        }
+                        if (url.includes('uddg=')) {
+                            const match = url.match(/uddg=([^&]+)/);
+                            if (match) {
+                                url = decodeURIComponent(match[1]);
+                            }
+                        }
+                        
+                        const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
+                        let snippet = snippetMatch ? snippetMatch[1] : '';
+                        snippet = snippet.replace(/<[^>]+>/g, '').trim();
+                        
+                        // Decode common HTML entities
+                        const decodeEntities = (str: string) => {
+                            return str
+                                .replace(/&amp;/g, '&')
+                                .replace(/&lt;/g, '<')
+                                .replace(/&gt;/g, '>')
+                                .replace(/&quot;/g, '"')
+                                .replace(/&#x27;/g, "'")
+                                .replace(/&#39;/g, "'")
+                                .replace(/&apos;/g, "'")
+                                .replace(/&#92;/g, '\\');
+                        };
+                        
+                        title = decodeEntities(title);
+                        snippet = decodeEntities(snippet);
+                        
+                        if (title || snippet) {
+                            results.push({ title, url, snippet });
+                        }
+                    }
+                    
+                    if (results.length === 0) {
+                        return `[search_web] No results found for query: "${query}"`;
+                    }
+                    
+                    let output = `[search_web results for "${query}"]\n\n`;
+                    for (let j = 0; j < Math.min(results.length, 8); j++) {
+                        const r = results[j];
+                        output += `${j + 1}. Title: ${r.title}\n   URL: ${r.url}\n   Snippet: ${r.snippet}\n\n`;
+                    }
+                    return output;
+                } catch (e: any) {
+                    return `[search_web] Error during search: ${e.message}`;
+                }
+            }
+            if (c.tool === 'base64_encode') {
+                return '[base64_encode]\n' + Buffer.from(c.attrs.text || '').toString('base64');
+            }
+            if (c.tool === 'base64_decode') {
+                return '[base64_decode]\n' + Buffer.from(c.attrs.text || '', 'base64').toString('utf-8');
+            }
+            if (c.tool === 'get_env_var') {
+                return '[get_env_var]\n' + (process.env[c.attrs.name || ''] || '(not set)');
+            }
+
+            // FS tools require workspace
+            if (!ws) return '[' + c.tool + '] error: no workspace';
+            const vfs = vscode.workspace.fs;
+
+            if (c.tool === 'delete_file') {
+                await vfs.delete(vscode.Uri.joinPath(ws, c.attrs.path || ''));
+                return '[delete_file] success.';
+            }
+            if (c.tool === 'rename_file') {
+                await vfs.rename(vscode.Uri.joinPath(ws, c.attrs.src || ''), vscode.Uri.joinPath(ws, c.attrs.dest || ''));
+                return '[rename_file] success.';
+            }
+            if (c.tool === 'read_dir') {
+                const entries = await vfs.readDirectory(vscode.Uri.joinPath(ws, c.attrs.path || ''));
+                return '[read_dir]\n' + entries.map(e => e[0] + (e[1] === 2 ? '/' : '')).join('\n');
+            }
+            if (c.tool === 'create_dir') {
+                await vfs.createDirectory(vscode.Uri.joinPath(ws, c.attrs.path || ''));
+                return '[create_dir] success.';
+            }
+            if (c.tool === 'copy_file') {
+                await vfs.copy(vscode.Uri.joinPath(ws, c.attrs.src || ''), vscode.Uri.joinPath(ws, c.attrs.dest || ''));
+                return '[copy_file] success.';
+            }
+            if (c.tool === 'get_file_info') {
+                const stat = await vfs.stat(vscode.Uri.joinPath(ws, c.attrs.path || ''));
+                return `[get_file_info]\nSize: ${stat.size} bytes\nModified: ${new Date(stat.mtime).toISOString()}`;
+            }
+            if (c.tool === 'read_json') {
+                const data = Buffer.from(await vfs.readFile(vscode.Uri.joinPath(ws, c.attrs.path || ''))).toString('utf-8');
+                const obj = JSON.parse(data);
+                const key = c.attrs.key;
+                return '[read_json]\n' + JSON.stringify(key ? obj[key] : obj, null, 2);
+            }
+            if (c.tool === 'format_json') {
+                const uri = vscode.Uri.joinPath(ws, c.attrs.path || '');
+                const data = Buffer.from(await vfs.readFile(uri)).toString('utf-8');
+                const formatted = JSON.stringify(JSON.parse(data), null, 2);
+                await vfs.writeFile(uri, Buffer.from(formatted, 'utf-8'));
+                return '[format_json] success.';
+            }
+
+            return '[' + c.tool + '] executed successfully.';
+        } catch (e: any) {
+            return '[' + c.tool + '] ERROR: ' + e.message;
+        }
+    }
 }
 
 // ---- helpers ----
@@ -475,13 +683,14 @@ function matchAllPairs(s: string, rx: RegExp): [string, string][] { const out: [
 function stripTags(s: string): string {
     return s
         .replace(/<think\b[^>]*>[\s\S]*?<\/think>/g, '')
+        .replace(/<thought\b[^>]*>[\s\S]*?<\/thought>/g, '')
         .replace(/<status>[\s\S]*?<\/status>/g, '')
         .replace(/<task_list>[\s\S]*?<\/task_list>/g, '')
         .replace(/<edit[^>]*?>[\s\S]*?<\/edit>/g, '')
         .replace(/<create[^>]*?>[\s\S]*?<\/create>/g, '')
         .replace(/<ask_user>[\s\S]*?<\/ask_user>/g, '')
         .replace(/<spawn_agent[^>]*?\/?>/g, '')
-        .replace(/<run_command[^>]*?\/?>/g, '')
+        .replace(/<run_command[^>]*?>([\s\S]*?<\/run_command>)?/g, '')
         .replace(/<run_code[^>]*?>[\s\S]*?<\/run_code>/g, '')
         .replace(/<(read_file|list_files|search_files)[^>]*?\/?>/g, '');
 }

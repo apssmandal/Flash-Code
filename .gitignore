@@ -8,3 +8,6 @@ out/
 .flashcode/
 brain/
 scratch/
+.flash-worktrees/
+Future_Plan.md
+Prompts/

@@ -62,7 +62,7 @@ input.txt:focus,select.txt:focus{border-color:var(--accent)}
 #save:hover{opacity:.95}
 .note{font-size:11px;color:var(--dim);margin-top:5px;line-height:1.4}
 </style></head><body>
-<div id="hd"><span class="t">Flash Code</span><button class="icobtn" id="gear" title="Settings"></button></div>
+<div id="hd"><span class="t">Flash Code</span><button class="icobtn" id="dashbtn" title="Mission Control Dashboard" onclick="V.postMessage({command:'openDashboard'})"></button><button class="icobtn" id="gear" title="Settings"></button></div>
 <button id="new" onclick="V.postMessage({command:'newSession'})"><span id="newic"></span> New Session</button>
 <input id="search" placeholder="Search sessions..." oninput="render()"/>
 <div id="list"><div class="empty">No chats yet.</div></div>
@@ -71,11 +71,13 @@ input.txt:focus,select.txt:focus{border-color:var(--accent)}
   <div class="sh"><button class="icobtn" id="backbtn" onclick="closeSettings()"></button><span>Settings</span></div>
   <div class="body">
     <div class="grp"><label>Model</label>
-      <button class="pill" data-model="gemini-2.5-flash" onclick="pickModel(this)">Gemini 2.5 Flash</button>
-      <button class="pill" data-model="gemini-3-flash-preview" onclick="pickModel(this)">Gemini 3 Flash</button>
-      <button class="pill" data-model="gemini-3.1-flash-lite" onclick="pickModel(this)">Gemini 3.1 Flash Lite</button>
-      <button class="pill" data-model="gemini-3.5-flash" onclick="pickModel(this)">Gemini 3.5 Flash</button>
-      <button class="pill" data-model="ollama" onclick="pickModel(this)">Ollama (local)</button>
+      <select class="txt" id="modelSelect" onchange="pickModel(this)">
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+        <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+        <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+        <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+        <option value="ollama">Ollama (local)</option>
+      </select>
     </div>
     <div class="grp"><label>Gemini API Keys (round-robin)</label>
       <div id="keys"></div>
@@ -93,7 +95,7 @@ input.txt:focus,select.txt:focus{border-color:var(--accent)}
       <input class="txt" id="oNumCtx" type="number" step="1024" min="2048" placeholder="4096"/>
     </div>
     <div class="grp"><label>Default Mode</label>
-      <select class="txt" id="dMode"><option value="ask">Ask before edit</option><option value="auto-edit">Edit automatically</option><option value="plan">Plan mode</option><option value="autonomous">Auto Mode</option></select>
+      <select class="txt" id="dMode"><option value="ask">Ask before edit</option><option value="auto-edit">Edit automatically</option><option value="plan">Plan mode</option></select>
     </div>
     <div class="grp"><label>Default Effort</label>
       <select class="txt" id="dEffort"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">xHigh</option><option value="max">Max</option></select>
@@ -113,9 +115,11 @@ edit:'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><pat
 trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
 x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
 eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
-eyeOff:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'};
+eyeOff:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+dash:'<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>'};
 
 function sv(n){return '<svg viewBox="0 0 24 24">'+(IC[n]||'')+'</svg>'}
+document.getElementById('dashbtn').innerHTML=sv('dash');
 document.getElementById('gear').innerHTML=sv('gear');
 document.getElementById('newic').innerHTML=sv('plus');
 document.getElementById('backbtn').innerHTML=sv('back');
@@ -131,7 +135,7 @@ function del(id){V.postMessage({command:'deleteSession',id})}
 
 document.getElementById('gear').onclick=()=>{document.getElementById('settings').classList.add('show');V.postMessage({command:'getSettings'})};
 function closeSettings(){document.getElementById('settings').classList.remove('show')}
-function pickModel(b){curModel=b.dataset.model;document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',p===b));document.getElementById('ollamaGrp').style.display=curModel==='ollama'?'block':'none'}
+function pickModel(b){curModel=b.value;document.getElementById('ollamaGrp').style.display=curModel==='ollama'?'block':'none'}
 function dot(c,title){return '<span class="st" title="'+(title||'')+'" style="width:9px;height:9px;border-radius:50%;background:'+c+';display:inline-block"></span>'}
 function statusIcon(st){if(!st)return dot('var(--vscode-charts-green,#3fb950)','Ready');if(st.status==='limited')return dot('var(--vscode-charts-yellow,#d7a700)','Rate-limited '+Math.ceil(st.cooldownMs/1000)+'s');if(st.status==='error')return dot('var(--vscode-charts-red,#f85149)','Error');return dot('var(--vscode-charts-green,#3fb950)','Ready')}
 
@@ -186,7 +190,7 @@ window.addEventListener('message',e=>{const m=e.data;
   else if(m.command==='sessionList'){sessions=m.sessions||[];render()}
   else if(m.command==='settingsData'){
     const s=m.settings;curModel=s.model;keyStatuses=m.keyStatuses||[];
-    document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',p.dataset.model===s.model));
+    document.getElementById('modelSelect').value=s.model;
     document.getElementById('ollamaGrp').style.display=s.model==='ollama'?'block':'none';
     document.getElementById('oUrl').value=s.ollamaUrl||'';
     document.getElementById('oModel').value=s.ollamaModel||'';

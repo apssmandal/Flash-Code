@@ -2,7 +2,7 @@
   "name": "flash-code",
   "displayName": "Flash Code",
   "description": "AI coding assistant — Claude Code-style agentic chat powered by round-robin free-tier Gemini API keys and Ollama",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "publisher": "Animixer",
   "author": {
     "name": "Arpan Mandal"
@@ -40,6 +40,11 @@
       ]
     },
     "commands": [
+      {
+        "command": "flashCode.openDashboard",
+        "title": "Flash Code: Mission Control Dashboard",
+        "icon": "$(dashboard)"
+      },
       {
         "command": "flashCode.open",
         "title": "Flash Code: Open"
@@ -112,7 +117,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Multiple keys \u2014 round-robin per request"
+          "description": "Multiple keys — round-robin per request"
         },
         "flashCode.gemini.model": {
           "type": "string",
@@ -174,8 +179,8 @@
     }
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
     "typescript": "^5.3.0"
   }
 }

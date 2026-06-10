@@ -2,3 +2,10 @@ src/**
 tsconfig.json
 .gitignore
 node_modules/**
+.git/**
+.flashcode_scratch/**
+.flashcode/**
+Future_Plan.md
+Prompts/**
+*.vsix
+package-lock.json

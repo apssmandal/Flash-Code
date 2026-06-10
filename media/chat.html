@@ -95,14 +95,122 @@ body.vscode-light .tl::before{background:var(--accent)}
 
 /* diff */
 .diff{margin:9px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;font-family:var(--mono);font-size:11.5px;background:var(--codebg)}
-.diff-col{background:var(--codebg)}
+.diff-col{background:var(--codebg);overflow-x:auto}
 .diff-hd{display:flex;align-items:center;gap:8px;padding:6px 11px;background:var(--bg2);border-bottom:1px solid var(--border);font-family:var(--vscode-font-family)}
 .diff-hd .ic{color:var(--dim)}.diff-hd .p{color:var(--accent);flex:1;font-size:12px;cursor:pointer}.diff-hd .p:hover{text-decoration:underline}
 .file-link{color:var(--accent);text-decoration:none;cursor:pointer;font-weight:500}.file-link:hover{text-decoration:underline}
 .diff-bd{font-size:10px;padding:1px 7px;border-radius:9px;border:1px solid var(--border);color:var(--dim)}
-.diff-cols{display:flex;overflow-x:auto}.diff-col{flex:1;min-width:0}
-.drow{display:flex;line-height:1.5}.drow .n{width:34px;flex-shrink:0;text-align:right;padding:0 6px;opacity:.45;user-select:none}
-.drow .c{padding:0 8px;white-space:pre;overflow-x:auto}
+.diff-cols{display:flex;overflow-x:hidden}.diff-col{flex:1;min-width:0}
+.drow{display:flex;line-height:1.5;width:max-content;min-width:100%}
+.drow .n{width:38px;flex-shrink:0;text-align:right;padding:0 8px;opacity:.45;user-select:none;font-size:11px}
+.drow .n.new-n { border-right:1px solid var(--border); margin-right:8px; }
+.drow .c{padding:0 8px;white-space:pre}
+.drow.gap {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  min-height:38px;
+  padding:4px 0;
+  background:transparent !important;
+  user-select:none;
+  width:100%;
+}
+.drow.gap::before {
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:50%;
+  height:1px;
+  background:var(--border);
+  z-index:1;
+}
+.gap-btn-wrap {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  position:relative;
+  z-index:2;
+  background:var(--codebg);
+  padding:0 12px;
+}
+.gap-btn {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  color:var(--dim);
+  border-radius:12px;
+  padding:3px 12px;
+  font-size:11px;
+  font-family:var(--vscode-font-family);
+  cursor:pointer;
+  transition:all 0.2s;
+  font-weight:500;
+}
+.gap-btn:hover {
+  border-color:var(--accent);
+  color:var(--fg);
+  background:var(--hover);
+}
+.sub-gap-col {
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.gap-btn.sub-gap-btn {
+  padding:1px 6px;
+  border-radius:4px;
+  font-size:9px;
+  line-height:1.2;
+}
+
+/* code collapse/expand */
+.cb-body {
+  display:flex;
+  overflow-x:auto;
+  position:relative;
+  transition:max-height 0.25s ease-out;
+}
+.cb.collapsed .cb-body {
+  max-height:468px;
+  overflow-y:hidden;
+}
+.cb.collapsed .cb-body::after {
+  content:"";
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  height:40px;
+  background:linear-gradient(to bottom, transparent, var(--codebg));
+  pointer-events:none;
+}
+.cb-expand-bar {
+  display:none;
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  padding:6px;
+  text-align:center;
+}
+.cb.has-more .cb-expand-bar {
+  display:block;
+}
+.cb-expand-btn {
+  background:var(--bg);
+  border:1px solid var(--border);
+  color:var(--dim);
+  border-radius:6px;
+  padding:3px 16px;
+  font-size:11px;
+  cursor:pointer;
+  font-weight:500;
+  transition:all 0.2s;
+}
+.cb-expand-btn:hover {
+  border-color:var(--accent);
+  color:var(--fg);
+  background:var(--hover);
+}
 .drow.add{background:var(--addbg)}.drow.add .c{color:var(--green)}
 .drow.remove{background:var(--rembg)}.drow.remove .c{color:var(--red)}
 .drow.gap{background:var(--hover);color:var(--dim);font-style:italic;font-family:var(--vscode-font-family)}
@@ -110,6 +218,42 @@ body.vscode-light .tl::before{background:var(--accent)}
 .dbtn{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 11px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--fg)}
 .dbtn.yes{color:var(--green);border-color:var(--green)}.dbtn.no{color:var(--red);border-color:var(--red)}.dbtn:hover{background:var(--hover)}
 .applied-tag{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--green);padding:7px 11px;font-family:var(--vscode-font-family)}
+
+/* subagent result container */
+.subagent-result-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 6px;
+}
+.subagent-result-hd svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.2;
+}
+.subagent-result-bd {
+  border: 1px solid var(--border);
+  border-radius: 0 0 8px 8px;
+  padding: 12px;
+  background: var(--codebg);
+  margin-bottom: 8px;
+}
+.subagent-result-bd > :first-child {
+  margin-top: 0;
+}
+.subagent-result-bd > :last-child {
+  margin-bottom: 0;
+}
 
 /* tool / think / todo */
 .tl > .tool{border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin:8px 0;background:var(--bg2);box-shadow:0 2px 10px var(--shadow);transition:border-color 0.2s}
@@ -178,7 +322,25 @@ body.vscode-light .tl::before{background:var(--accent)}
 .rb:hover{color:var(--fg);border-color:var(--accent);background:var(--hover)}
 
 /* clarification */
-.clar{border:1px solid var(--border);border-radius:9px;margin:8px 0;background:var(--bg2);overflow:hidden}
+.clar{border:1px solid var(--border);border-radius:12px;margin:16px auto;max-width:480px;width:95%;background:var(--bg2);overflow:hidden;box-shadow:0 4px 16px var(--shadow)}
+.clar:not(:has(.applied-tag)) {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 500;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 9999px rgba(10, 14, 23, 0.7);
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  border-radius: 14px;
+  animation: modalEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modalEnter {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
 .clar-tabs{display:flex;gap:14px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border)}
 .clar-tab{font-size:12px;color:var(--dim);cursor:pointer;padding-bottom:4px;border-bottom:2px solid transparent}
 .clar-tab.on{color:var(--fg);border-color:var(--accent)}
@@ -190,7 +352,9 @@ body.vscode-light .tl::before{background:var(--accent)}
 .clar-q{padding:7px 12px 10px}.clar-q .qt{font-weight:600;margin-bottom:8px}
 .opt{display:flex;gap:9px;align-items:flex-start;padding:7px 9px;border-radius:6px;cursor:pointer}
 .opt:hover,.opt.active{background:var(--hover)}.opt .lab{font-weight:600}.opt .des{color:var(--dim);font-size:12px}.opt input{margin-top:3px}
-.clar-other{margin-top:6px;width:100%;background:var(--inbg);color:var(--infg);border:1px solid var(--inbd);border-radius:6px;padding:6px 9px;font-size:12px;display:none}
+.opt.recommended-opt { border: 1px dashed var(--accent); background: rgba(63, 185, 80, 0.04); }
+.opt.recommended-opt:hover { background: var(--hover); }
+.clar-other{margin-top:10px;width:100%;background:var(--inbg);color:var(--infg);border:1px solid var(--inbd);border-radius:6px;padding:8px 11px;font-size:12px;display:block}
 .clar-foot{padding:9px 12px;border-top:1px solid var(--border)}
 .clar-sub{width:100%;background:var(--btnbg);color:var(--btnfg);border:none;border-radius:6px;padding:8px;font-size:13px;cursor:pointer;opacity:.5}
 .clar-sub.ready{opacity:1}
@@ -303,7 +467,11 @@ const V=acquireVsCodeApi(),chat=document.getElementById('chat');
 let busy=false,curMsgIdx=-1,aiC=null,mode='ask',effort='medium',thinking=false,curModel='gemini',atts=[],actIdx=-1,workEl=null;
 let activeThinkingRow = null, activeThinkingTimer = null, activeThinkingStart = 0, latestThoughtText = '';
 const EFF=['low','medium','high','xhigh','max'];
-const MODES=[['ask','Ask before edit','Review every change before it applies'],['auto-edit','Edit automatically','Apply edits without asking'],['plan','Plan mode','Analyse and plan, no file writes'],['autonomous','Auto Mode','Fully autonomous agent execution']];
+const MODES = [
+  ['ask', 'Ask before edit', 'Review every change before it applies'],
+  ['auto-edit', 'Edit automatically', 'Apply edits without asking'],
+  ['plan', 'Plan mode', 'Analyse and plan, no file writes']
+];
 
 /* ---- feather icons ---- */
 const IC={
@@ -529,7 +697,23 @@ function addItem(kind,html,who){hideW();hideEndLogo();const r=document.createEle
   if(wi)chat.insertBefore(r,wi);else chat.appendChild(r);scrollDown(kind==='user'||kind==='ai');return r;}
 
 /* ---- markdown ---- */
+function stripXmlTags(text) {
+  const codeBlocks = [];
+  text = text.replace(/`[^`]+`/g, (match) => {
+    const placeholder = `__INLINE_CODE_PLACEHOLDER_${codeBlocks.length}__`;
+    codeBlocks.push(match);
+    return placeholder;
+  });
+  text = text.replace(/<\/?([A-Za-z0-9_-]+)(?:\s+[A-Za-z0-9_-]+(?:=(?:"[^"]*"|'[^']*'|[^\s>]+))?)*\s*\/?>/g, '');
+  for (let i = 0; i < codeBlocks.length; i++) {
+    text = text.replace(`__INLINE_CODE_PLACEHOLDER_${i}__`, codeBlocks[i]);
+  }
+  return text;
+}
+
 function renderMd(raw){let clar='';raw=raw.replace(/<ask_user>([\s\S]*?)<\/ask_user>/g,(_,j)=>{clar+=buildClar(j,'chat');return ''});
+  raw = raw.replace(/<Cognitive_Process>[\s\S]*?<\/Cognitive_Process>/g, '');
+  raw = raw.replace(/<task_list>[\s\S]*?<\/task_list>/g, '');
   raw = raw.replace(/(^|\n)<think\b[^>]*>([\s\S]*?)<\/think>/g, '$1');
   raw = raw.replace(/(^|\n)<think\b[^>]*>[\s\S]*$/, '$1');
   // file edits are shown as diff cards, never as streamed code: strip them
@@ -537,16 +721,42 @@ function renderMd(raw){let clar='';raw=raw.replace(/<ask_user>([\s\S]*?)<\/ask_u
   raw=raw.replace(/<read_file[^>]*\/?>/g,'');                    // hide file-read requests
   raw=raw.replace(/(^|\n)<(edit|create)\b[\s\S]*$/,'$1');               // hide a still-streaming block
   const fc=(raw.match(/```/g)||[]).length; if(fc%2===1){raw=raw.slice(0,raw.lastIndexOf('```'));} // hide unclosed fence
+
+  // Detect subagent result prefix
+  let subagentHeader = '';
+  const subagentMatch = raw.match(/^\[Subagent ([^\]]+)\]:\s*([\s\S]*)/);
+  if (subagentMatch) {
+    const roleName = subagentMatch[1];
+    raw = subagentMatch[2];
+    subagentHeader = '<div class="subagent-result-hd">'
+      + sv('term')
+      + 'Subagent ' + esc(roleName) + ' Completed'
+      + '</div>';
+  }
+
   let html='';const rx=/```(\w+)?(?::(\S+))?\n([\s\S]*?)```/g;let last=0,m;
-  while((m=rx.exec(raw))!==null){if(m.index>last)html+=mdText(raw.slice(last,m.index));
+  while((m=rx.exec(raw))!==null){if(m.index>last)html+=mdText(stripXmlTags(raw.slice(last,m.index)));
     const lang=m[1]||'',fp=m[2]||'',code=(m[3]||'').replace(/\n$/,'');
-    if(fp){last=rx.lastIndex;continue;} // path-tagged fence = file edit → rendered as a diff card, not shown as code
+    if(fp){last=rx.lastIndex;continue;}
     const lines=code.split('\n');const nums=lines.map((_,i)=>'<span>'+(i+1)+'</span>').join('');
-    html+='<div class="cb"><div class="cb-hd"><span class="cb-fp">'+(lang||'code')+'</span><button class="cb-btn" onclick="expandCode(this,\''+(lang||'txt')+'\')">Expand</button><button class="cb-btn" onclick="cp(this)">Copy</button></div><div class="cb-body"><div class="cb-nums">'+nums+'</div><div class="cb-code">'+esc(code)+'</div></div></div>';
+    const hasMore=lines.length>25;
+    const cbClass='cb'+(hasMore?' collapsed has-more':'');
+    const expandBar=hasMore?'<div class="cb-expand-bar"><button class="cb-expand-btn" onclick="toggleCbExpand(this)">Expand</button></div>':'';
+    html+='<div class="'+cbClass+'"><div class="cb-hd"><span class="cb-fp">'+(lang||'code')+'</span><button class="cb-btn" onclick="expandCode(this,\''+(lang||'txt')+'\')">Expand</button><button class="cb-btn" onclick="cp(this)">Copy</button></div><div class="cb-body"><div class="cb-nums">'+nums+'</div><div class="cb-code">'+esc(code)+'</div></div>'+expandBar+'</div>';
     last=rx.lastIndex;}
-  if(last<raw.length)html+=mdText(raw.slice(last));return html+clar;}
+  if(last<raw.length)html+=mdText(stripXmlTags(raw.slice(last)));
+
+  if (subagentHeader) {
+    return subagentHeader + '<div class="subagent-result-bd">' + html + '</div>' + clar;
+  }
+  return html+clar;}
 function mdText(t) {
-  const inline = s => s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code class="il">$1</code>').replace(/\[([^\]]+)\]\(([^)]+)\)/g,(_,t,h)=>'<a href="#" class="file-link" onclick="event.preventDefault();openWorkspaceFile(\''+h+'\')">'+t+'</a>');
+  const inline = s => s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code class="il">$1</code>').replace(/\[([^\]]+)\]\(([^)]+)\)/g,(_,t,h)=>{
+    if (/^https?:\/\//i.test(h)) {
+      return '<a href="' + h + '" target="_blank" rel="noopener noreferrer">' + t + '</a>';
+    }
+    return '<a href="#" class="file-link" onclick="event.preventDefault();openWorkspaceFile(\''+h+'\')">'+t+'</a>';
+  });
   
   let html = '';
   let listStack = [];
@@ -649,7 +859,7 @@ function closePreview(){document.getElementById('imgmodal').classList.remove('sh
 function startAI(){const r=addItem('ai','<div class="ai-c"></div>','Flash Code');aiC=r.querySelector('.ai-c');showWork();}
 function restoreAI(t){addItem('ai','<div class="ai-c">'+renderMd(t)+'</div>','Flash Code');}
 
-const ST={send:'<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>',stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>'};
+const ST={send:'<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>',stop:'<circle cx="12" cy="12" r="10" fill="none" stroke="#FF5E5E" stroke-width="2"/><rect x="9" y="9" width="6" height="6" fill="#FF5E5E" rx="1"/>'};
 function setBusy(b){busy=b;document.body.classList.toggle('agent-active', b);const s=document.getElementById('send');s.innerHTML='<svg viewBox="0 0 24 24">'+(b?ST.stop:ST.send)+'</svg>';s.title=b?'Stop':'Send';s.classList.toggle('stopping',b);}
 function cancel(){V.postMessage({command:'cancel'});stopAllShim();hideWork();document.getElementById('statusbar').classList.remove('show');aiC=null;setBusy(false);}
 function prefillAgent(role){const inp=document.getElementById('inp');inp.value='/agent '+role+' ';inp.focus();onInp(inp);}
@@ -702,7 +912,6 @@ function buildActions(){const a=[
   {cat:'Commands',t:'/review',d:'Review recent changes',f:()=>runPrompt('Review my recent changes for bugs, edge cases, and improvements.')},
   {cat:'Commands',t:'/doc',d:'Add docs/comments',f:()=>runPrompt('Add clear documentation comments to the active file.')},
   {cat:'Commands',t:'/plan',d:'Switch to Plan mode',f:()=>setMode('plan')},
-  {cat:'Commands',t:'/auto',d:'Switch to Auto mode',f:()=>setMode('autonomous')},
   {cat:'Commands',t:'/ask',d:'Switch to Ask-before-edit',f:()=>setMode('ask')},
   {cat:'Agents',t:'/agent research …',d:'Spawn background research worker',f:()=>prefillAgent('research')},
   {cat:'Agents',t:'/agent test …',d:'Spawn background test verification',f:()=>prefillAgent('test')},
@@ -745,17 +954,163 @@ document.getElementById('inp').addEventListener('paste',ev=>{const items=(ev.cli
 function cp(b){navigator.clipboard.writeText(b.closest('.cb').querySelector('.cb-code').textContent);b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200);}
 function expandCode(b,lang){V.postMessage({command:'openInTab',code:b.closest('.cb').querySelector('.cb-code').textContent,lang:lang});}
 function openWorkspaceFile(path){V.postMessage({command:'openFile',path:path});}
+function toggleCbExpand(btn) {
+  const cb = btn.closest('.cb');
+  const isCollapsed = cb.classList.contains('collapsed');
+  if (isCollapsed) {
+    cb.classList.remove('collapsed');
+    btn.textContent = 'Collapse';
+  } else {
+    cb.classList.add('collapsed');
+    btn.textContent = 'Expand';
+    cb.scrollIntoView({ block: 'nearest' });
+  }
+}
 
 /* diff */
-function buildDiff(ch){const rows=ch.diff.map(r=>{
-  if(r.type==='gap')return {gap:'<div class="drow gap"><span class="n"></span><span class="c">'+esc(r.left.text)+'</span></div>'};
-  const L=r.left?'<div class="drow '+(r.type==='remove'?'remove':'')+'"><span class="n">'+(r.left.n||'')+'</span><span class="c">'+esc(r.left.text)+'</span></div>':'<div class="drow"><span class="n"></span><span class="c"></span></div>';
-  const R=r.right?'<div class="drow '+(r.type==='add'?'add':'')+'"><span class="n">'+(r.right.n||'')+'</span><span class="c">'+esc(r.right.text)+'</span></div>':'<div class="drow"><span class="n"></span><span class="c"></span></div>';
-  return {L,R};});
-  const left=rows.map(x=>x.gap||x.L).join('');const right=rows.map(x=>x.gap?'<div class="drow"><span class="n"></span><span class="c"></span></div>':x.R).join('');
+let gapIdCounter = 0;
+const activeGaps = new Map();
+
+function collapseDiffRows(rows, ctx = 3) {
+  const changed = rows.map(r => r.type !== 'same');
+  const keep = new Array(rows.length).fill(false);
+  for (let i = 0; i < rows.length; i++) {
+    if (changed[i]) {
+      for (let d = -ctx; d <= ctx; d++) {
+        const idx = i + d;
+        if (idx >= 0 && idx < rows.length) keep[idx] = true;
+      }
+    }
+  }
+
+  const out = [];
+  let currentGap = [];
+  for (let i = 0; i < rows.length; i++) {
+    if (keep[i]) {
+      if (currentGap.length > 0) {
+        out.push({ type: 'gap', hiddenRows: currentGap });
+        currentGap = [];
+      }
+      out.push(rows[i]);
+    } else {
+      currentGap.push(rows[i]);
+    }
+  }
+  if (currentGap.length > 0) {
+    out.push({ type: 'gap', hiddenRows: currentGap });
+  }
+  return out;
+}
+
+function renderDiffRow(r) {
+  if (r.type === 'remove') {
+    return '<div class="drow remove">'
+      + '<span class="n old-n">' + (r.left.n || '') + '</span>'
+      + '<span class="n new-n"></span>'
+      + '<span class="c">' + esc(r.left.text) + '</span>'
+      + '</div>';
+  }
+  if (r.type === 'add') {
+    return '<div class="drow add">'
+      + '<span class="n old-n"></span>'
+      + '<span class="n new-n">' + (r.right.n || '') + '</span>'
+      + '<span class="c">' + esc(r.right.text) + '</span>'
+      + '</div>';
+  }
+  return '<div class="drow same">'
+    + '<span class="n old-n">' + (r.left.n || '') + '</span>'
+    + '<span class="n new-n">' + (r.right.n || '') + '</span>'
+    + '<span class="c">' + esc(r.left.text) + '</span>'
+    + '</div>';
+}
+
+function expandGapFull(gapId) {
+  const hiddenRows = activeGaps.get(gapId);
+  if (!hiddenRows) return;
+  const gapEl = document.querySelector(`.drow.gap[data-gap-id="${gapId}"]`);
+  if (!gapEl) return;
+  const html = hiddenRows.map(r => renderDiffRow(r)).join('');
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+  const parent = gapEl.parentNode;
+  while (tempDiv.firstChild) {
+    parent.insertBefore(tempDiv.firstChild, gapEl);
+  }
+  parent.removeChild(gapEl);
+  activeGaps.delete(gapId);
+  scrollDown();
+}
+
+function expandGapPartial(gapId, direction) {
+  const hiddenRows = activeGaps.get(gapId);
+  if (!hiddenRows || hiddenRows.length === 0) return;
+  const gapEl = document.querySelector(`.drow.gap[data-gap-id="${gapId}"]`);
+  if (!gapEl) return;
+  let expandedRows = [];
+  let remainingRows = [];
+  if (direction === 'top') {
+    expandedRows = hiddenRows.slice(0, 10);
+    remainingRows = hiddenRows.slice(10);
+  } else {
+    expandedRows = hiddenRows.slice(-10);
+    remainingRows = hiddenRows.slice(0, -10);
+  }
+  const expandedHtml = expandedRows.map(r => renderDiffRow(r)).join('');
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = expandedHtml;
+  const parent = gapEl.parentNode;
+  if (direction === 'top') {
+    while (tempDiv.firstChild) {
+      parent.insertBefore(tempDiv.firstChild, gapEl);
+    }
+  } else {
+    const nextSibling = gapEl.nextSibling;
+    while (tempDiv.firstChild) {
+      parent.insertBefore(tempDiv.firstChild, nextSibling);
+    }
+  }
+  if (remainingRows.length === 0) {
+    parent.removeChild(gapEl);
+    activeGaps.delete(gapId);
+  } else {
+    activeGaps.set(gapId, remainingRows);
+    const count = remainingRows.length;
+    const mainBtn = gapEl.querySelector('.main-gap-btn');
+    if (mainBtn) mainBtn.textContent = `+${count} more lines`;
+    const subGapCol = gapEl.querySelector('.sub-gap-col');
+    if (count <= 10 && subGapCol) {
+      subGapCol.remove();
+    }
+  }
+  scrollDown();
+}
+
+function buildDiff(ch){
+  const collapsedRows = collapseDiffRows(ch.diff || []);
+  const rows = collapsedRows.map(r => {
+    if (r.type === 'gap') {
+      const gapId = 'gap-' + (gapIdCounter++);
+      activeGaps.set(gapId, r.hiddenRows);
+      const count = r.hiddenRows.length;
+      const subGapCol = count > 10
+        ? '<div class="sub-gap-col">'
+          + '<button class="gap-btn sub-gap-btn top-expand" onclick="expandGapPartial(\'' + gapId + '\', \'top\')">+10</button>'
+          + '<button class="gap-btn sub-gap-btn bottom-expand" onclick="expandGapPartial(\'' + gapId + '\', \'bottom\')">+10</button>'
+          + '</div>'
+        : '';
+      return '<div class="drow gap" data-gap-id="' + gapId + '">'
+        + '<div class="gap-btn-wrap">'
+        + '<button class="gap-btn main-gap-btn" onclick="expandGapFull(\'' + gapId + '\')">+' + count + ' more lines</button>'
+        + subGapCol
+        + '</div>'
+        + '</div>';
+    }
+    return renderDiffRow(r);
+  }).join('');
+
   let acts=ch.applied?'<div class="applied-tag">'+sv('check')+'Applied automatically</div>'
     :'<div class="diff-acts"><button class="dbtn yes" onclick="dAcc(this,false)">'+sv('check')+'Yes</button><button class="dbtn yes" onclick="dAcc(this,true)">Yes, always</button><button class="dbtn no" onclick="dRej(this)">'+sv('x')+'No</button><button class="dbtn" onclick="dTell(this)">Tell instead…</button></div>';
-  return '<div class="diff" data-p="'+esc(ch.path)+'" data-diff-id="'+esc(ch.diffId || '')+'"><div class="diff-hd"><span class="ic">'+sv('edit')+'</span><span class="p" onclick="openWorkspaceFile(\''+esc(ch.path)+'\')">'+esc(ch.path)+'</span><span class="diff-bd">'+esc(ch.badge||'modified')+'</span></div><div class="diff-cols"><div class="diff-col">'+left+'</div><div class="diff-col">'+right+'</div></div>'+acts+'</div>';}
+  return '<div class="diff" data-p="'+esc(ch.path)+'" data-diff-id="'+esc(ch.diffId || '')+'"><div class="diff-hd"><span class="ic">'+sv('edit')+'</span><span class="p" onclick="openWorkspaceFile(\''+esc(ch.path)+'\')">'+esc(ch.path)+'</span><span class="diff-bd">'+esc(ch.badge||'modified')+'</span></div><div class="diff-cols"><div class="diff-col">'+rows+'</div></div>'+acts+'</div>';}
 function dAcc(b,a){const c=b.closest('.diff');V.postMessage({command:a?'acceptDiffAlways':'acceptDiff',path:c.dataset.p,diffId:c.dataset.diffId});c.querySelector('.diff-acts').outerHTML='<div class="applied-tag">'+sv('check')+'Accepted</div>';}
 function dRej(b){const c=b.closest('.diff');V.postMessage({command:'rejectDiff',path:c.dataset.p,diffId:c.dataset.diffId});c.querySelector('.diff-acts').outerHTML='<div class="applied-tag" style="color:var(--red)">'+sv('x')+'Rejected</div>';}
 function dTell(b){const c=b.closest('.diff');const t=prompt('Tell Flash Code what to change instead:');if(t){V.postMessage({command:'tellClaude',path:c.dataset.p,text:t});c.querySelector('.diff-acts').outerHTML='<div class="applied-tag" style="color:var(--dim)">Sent feedback</div>';}}
@@ -768,18 +1123,20 @@ function buildClar(json,ctx){let data;try{data=JSON.parse(json.trim())}catch{ret
   const id='clar'+(clarN++);activeClar=id;const bMode=qs.length===1&&!qs[0].multiSelect;
   if(bMode){const q=qs[0];const opts=(q.options||[]);
     const rows=opts.map((o,i)=>'<div class="bopt'+(i===0?' active':'')+'" data-i="'+i+'" onclick="clarPick(\''+id+'\','+i+')"><span class="num">'+(i+1)+'</span><div>'+optText(o)+'</div></div>').join('');
-    return '<div class="clar" id="'+id+'" data-ctx="'+ctx+'" data-mode="b" data-n="'+opts.length+'" data-act="0"><div class="clar-tabs"><span class="clar-tab on">'+esc(q.header||'Question')+'</span><button class="clar-x" onclick="clarCancel(\''+id+'\')">'+sv('x')+'</button></div><div class="clar-title">'+esc(q.question||'')+'</div>'+(q.code?'<div class="clar-code">'+esc(q.code)+'</div>':'')+(q.description?'<div class="clar-desc">'+esc(q.description)+'</div>':'')+'<div class="bwrap">'+rows+'</div><input class="btell" placeholder="Tell Flash Code what to do instead" onkeydown="clarTell(event,\''+id+'\')"><div class="clar-hint">Press 1–'+opts.length+' or Enter · Esc to cancel</div></div>';}
-  const tabs=qs.map((q,i)=>'<span class="clar-tab'+(i===0?' on':'')+'" onclick="clarTab(\''+id+'\','+i+')">'+esc(q.header||('Q'+(i+1)))+'</span>').join('');
-  const bodies=qs.map((q,i)=>{const opts=(q.options||[]).concat([{label:'Other'}]).map(o=>{const inp=q.multiSelect?'checkbox':'radio';return '<label class="opt"><input type="'+inp+'" name="'+id+'_'+i+'" value="'+esc(optVal(o))+'" onchange="clarChg(\''+id+'\','+i+',this)"><div>'+optText(o)+'</div></label>';}).join('');
-    return '<div class="clar-q" data-qi="'+i+'" style="display:'+(i===0?'block':'none')+'"><div class="qt">'+esc(q.question||'')+(q.multiSelect?' <span class="des">(pick any)</span>':'')+'</div>'+opts+'<input class="clar-other" placeholder="Type your answer…"></div>';}).join('');
-  return '<div class="clar" id="'+id+'" data-ctx="'+ctx+'" data-mode="f" data-n="'+qs.length+'"><div class="clar-tabs">'+tabs+'<button class="clar-x" onclick="clarCancel(\''+id+'\')">'+sv('x')+'</button></div>'+bodies+'<div class="clar-foot"><button class="clar-sub" onclick="clarSubmit(\''+id+'\')">Submit answers</button></div><div class="clar-hint">Esc to cancel</div></div>';}
+    return '<div class="clar" id="'+id+'" data-ctx="'+ctx+'" data-mode="b" data-n="'+opts.length+'" data-act="0"><div class="clar-tabs"><span class="clar-tab on">'+esc(q.header||'Question')+'</span><button class="clar-x" onclick="clarCancel(\''+id+'\')">'+sv('x')+'</button></div><div class="clar-title">'+esc(q.question||'')+'</div>'+(q.code?'<div class="clar-code">'+esc(q.code)+'</div>':'')+(q.description?'<div class="clar-desc">'+esc(q.description)+'</div>':'')+'<div class="bwrap">'+rows+'</div><input class="btell" placeholder="Tell Flash Code what to do instead" onkeydown="clarTell(event,\''+id+'\')"><div class="clar-hint">Press 1-'+opts.length+' or Enter • Esc to cancel</div></div>';}
+  const tabs=qs.map((q,i)=>'<span class="clar-tab'+(i===0?' on':'')+'" style="pointer-events:none;">'+esc(q.header||('Step '+(i+1)+' of '+qs.length))+'</span>').join('');
+  const bodies=qs.map((q,i)=>{const isLast=(i===qs.length-1);const opts=(q.options||[]).concat([{label:'Other'}]).map((o,oi)=>{const inp=q.multiSelect?'checkbox':'radio';const checked=(oi===0)?' checked':'';const oClass=oi===0?'opt recommended-opt':'opt';return '<label class="'+oClass+'"><input type="'+inp+'" name="'+id+'_'+i+'" value="'+esc(optVal(o))+'"'+checked+' onchange="clarChg(\''+id+'\','+i+',this)"><div>'+optText(o)+'</div></label>';}).join('');
+    const btn='<button class="clar-sub ready" onclick="if(this.classList.contains(\'ready\')){' + (isLast?'clarSubmit(\''+id+'\')':'clarTab(\''+id+'\','+(i+1)+')') + '}">' + (isLast?'Submit answers':'Next Question') + '</button>';
+    return '<div class="clar-q" data-qi="'+i+'" style="display:'+(i===0?'block':'none')+'"><div class="qt">'+esc(q.question||'')+(q.multiSelect?' <span class="des">(pick any)</span>':'')+'</div>'+opts+'<input class="clar-other" placeholder="Additional instructions or custom choices (optional)..."><div class="clar-foot" style="margin-top:12px;">'+btn+'</div></div>';}).join('');
+  return '<div class="clar" id="'+id+'" data-ctx="'+ctx+'" data-mode="f" data-n="'+qs.length+'"><div class="clar-tabs">'+tabs+'<button class="clar-x" onclick="clarCancel(\''+id+'\')">'+sv('x')+'</button></div>'+bodies+'<div class="clar-hint">Esc to cancel</div></div>';}
 function clarActive(id,i){const el=document.getElementById(id);const o=el.querySelectorAll('.bopt');if(!o.length)return;i=Math.max(0,Math.min(i,o.length-1));el.dataset.act=i;o.forEach((x,xi)=>x.classList.toggle('active',xi===i));o[i].scrollIntoView({block:'nearest'});}
 function clarPick(id,i){const el=document.getElementById(id);clarFinish(id,el.querySelectorAll('.bopt')[i].querySelector('.lab').textContent);}
 function clarTell(e,id){if(e.key==='Enter'){e.preventDefault();const v=e.target.value.trim();if(v)clarFinish(id,v);}}
 function clarTab(id,i){const el=document.getElementById(id);el.querySelectorAll('.clar-tab').forEach((t,ti)=>t.classList.toggle('on',ti===i));el.querySelectorAll('.clar-q').forEach(q=>q.style.display=(+q.dataset.qi===i?'block':'none'));}
-function clarChg(id,qi,inp){const q=document.querySelector('#'+id+' .clar-q[data-qi="'+qi+'"]');q.querySelector('.clar-other').style.display=(inp.value==='Other'&&inp.checked)?'block':'none';clarReady(id);}
-function clarReady(id){const el=document.getElementById(id);const n=+el.dataset.n;let a=0;for(let i=0;i<n;i++)if(el.querySelector('.clar-q[data-qi="'+i+'"] input:checked'))a++;el.querySelector('.clar-sub').classList.toggle('ready',a===n);}
-function clarSubmit(id){const el=document.getElementById(id);const n=+el.dataset.n;const ans=[];for(let i=0;i<n;i++){const q=el.querySelector('.clar-q[data-qi="'+i+'"]');const ck=[...q.querySelectorAll('input:checked')].map(c=>c.value==='Other'?(q.querySelector('.clar-other').value||'Other'):c.value);const h=el.querySelectorAll('.clar-tab')[i].textContent;if(ck.length)ans.push(h+': '+ck.join(', '));}if(ans.length<n)return;clarFinish(id,ans.join('\n'));}
+// Modified clarChg to keep the text box always visible
+function clarChg(id,qi,inp){clarReady(id);}
+function clarReady(id){const el=document.getElementById(id);const n=+el.dataset.n;for(let i=0;i<n;i++){const q=el.querySelector('.clar-q[data-qi="'+i+'"]');if(!q)continue;const btn=q.querySelector('.clar-sub');if(btn)btn.classList.toggle('ready',!!q.querySelector('input:checked'));}}
+function clarSubmit(id){const el=document.getElementById(id);const n=+el.dataset.n;const ans=[];for(let i=0;i<n;i++){const q=el.querySelector('.clar-q[data-qi="'+i+'"]');const ck=[...q.querySelectorAll('input:checked')].map(c=>c.value==='Other'?(q.querySelector('.clar-other').value||'Other'):c.value);const otherVal=q.querySelector('.clar-other').value.trim();if(otherVal&&!ck.includes(otherVal)){ck.push('Custom: '+otherVal);}const h=el.querySelectorAll('.clar-tab')[i].textContent;if(ck.length)ans.push(h+': '+ck.join(', '));}if(ans.length<n)return;clarFinish(id,ans.join('\n'));}
 function clarFinish(id,txt){const el=document.getElementById(id);if(!el)return;if(el.dataset.ctx==='agent'){V.postMessage({command:'agentUserInput',value:txt});}else{addUser(txt);V.postMessage({command:'sendMessage',text:txt,attachments:[]});busy=true;document.getElementById('send').disabled=true;}el.innerHTML='<div class="applied-tag" style="padding:10px 12px">'+sv('check')+esc(txt.length>80?txt.slice(0,80)+'…':txt)+'</div>';if(activeClar===id)activeClar=null;}
 function clarCancel(id){const el=document.getElementById(id);if(!el)return;if(el.dataset.ctx==='agent')V.postMessage({command:'agentUserInput',value:'(cancelled — use your best judgment)'});el.innerHTML='<div class="applied-tag" style="padding:10px 12px;color:var(--dim)">Cancelled</div>';if(activeClar===id)activeClar=null;}
 document.addEventListener('keydown',e=>{if(!activeClar)return;const el=document.getElementById(activeClar);if(!el)return;
@@ -907,8 +1264,47 @@ window.addEventListener('message',e=>{const m=e.data;switch(m.command){
   case 'streamChunk':if(activeThinkingStart){finishThinking();}if(aiC){aiC.innerHTML=renderMd(m.text);}scrollDown();break;
   case 'endResponse':stopTimer('Thought');hideWork();aiC=null;setBusy(false);if(m.backend&&m.backend!=='error')curModel=m.backend;scrollDown();activeThinkingRow=null;showEndLogo();break;
   case 'errorCard':hideWork();aiC=null;addItem('err','<div class="errbox"><div class="errhd">'+sv('x')+' '+esc(m.title||'Error')+'</div><div class="errmsg">'+esc(m.message||'')+'</div></div>');setBusy(false);scrollDown();activeThinkingRow=null;showEndLogo();break;
-  case 'clearChat':stopAllShim();hideWork();todoEl=null;aiC=null;workEl=null;workRow=null;setBusy(false);activeThinkingRow=null;chat.innerHTML='<div id="welcome"><div class="mk"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><h1>Flash Code</h1><div class="wq">What would you like to build?</div><div id="qa"><button class="qab" onclick="quick(\'Explain this codebase\')">Explain codebase</button><button class="qab" onclick="quick(\'Review my recent changes\')">Review changes</button><button class="qab" onclick="quick(\'Help me debug an issue\')">Debug an issue</button><button class="qab" onclick="quick(\'Write tests for this code\')">Write tests</button></div></div>';break;
-  case 'restoreChat':stopAllShim();hideWork();chat.innerHTML='';todoEl=null;aiC=null;workEl=null;workRow=null;setBusy(false);activeThinkingRow=null;(m.messages||[]).forEach((msg,i)=>{if(msg.role==='user')addUser(msg.content,i,msg.attachments);else if(msg.role==='assistant')restoreAI(msg.content);});scrollDown();showEndLogo();break;
+  case 'clearChat':
+    stopAllShim();
+    hideWork();
+    todoEl=null;
+    aiC=null;
+    workEl=null;
+    workRow=null;
+    setBusy(false);
+    activeThinkingRow=null;
+    curMsgIdx=-1;
+    atts=[];
+    renderAtts();
+    activeThinkingStart=0;
+    activeGaps.clear();
+    document.getElementById('inp').value='';
+    document.getElementById('inp').style.height='42px';
+    document.getElementById('statusbar').classList.remove('show');
+    chat.innerHTML='<div id="welcome"><div class="mk"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><h1>Flash Code</h1><div class="wq">What would you like to build?</div><div id="qa"><button class="qab" onclick="quick(\'Explain this codebase\')">Explain codebase</button><button class="qab" onclick="quick(\'Review my recent changes\')">Review changes</button><button class="qab" onclick="quick(\'Help me debug an issue\')">Debug an issue</button><button class="qab" onclick="quick(\'Write tests for this code\')">Write tests</button></div></div>';
+    break;
+  case 'restoreChat':
+    stopAllShim();
+    hideWork();
+    todoEl=null;
+    aiC=null;
+    workEl=null;
+    workRow=null;
+    setBusy(false);
+    activeThinkingRow=null;
+    activeGaps.clear();
+    if (!m.messages || m.messages.length === 0) {
+      chat.innerHTML='<div id="welcome"><div class="mk"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><h1>Flash Code</h1><div class="wq">What would you like to build?</div><div id="qa"><button class="qab" onclick="quick(\'Explain this codebase\')">Explain codebase</button><button class="qab" onclick="quick(\'Review my recent changes\')">Review changes</button><button class="qab" onclick="quick(\'Help me debug an issue\')">Debug an issue</button><button class="qab" onclick="quick(\'Write tests for this code\')">Write tests</button></div></div>';
+    } else {
+      chat.innerHTML='';
+      m.messages.forEach((msg,i)=>{
+        if(msg.role==='user')addUser(msg.content,i,msg.attachments);
+        else if(msg.role==='assistant')restoreAI(msg.content);
+      });
+      showEndLogo();
+    }
+    scrollDown();
+    break;
   case 'workNotice':{workEl=addItem('ai','<div class="ai-c wl"></div>');shimStart(workEl.querySelector('.wl'),m.text);break;}
   case 'showNotice':if(workEl){const c=workEl.querySelector('.wl');shimStop(c);c.outerHTML='<div class="notice">'+sv('check')+' '+esc(m.text)+'</div>';workEl=null;}else addItem('ai','<div class="notice">'+esc(m.text)+'</div>');break;
   case 'addAttachmentToUI':addAtt(m.attachment);document.getElementById('inp').focus();break;
@@ -977,4 +1373,5 @@ window.addEventListener('message',e=>{const m=e.data;switch(m.command){
     showEndLogo();
     break;
 }});
+V.postMessage({command:'ready'});
 </script></body></html>

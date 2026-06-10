@@ -3,9 +3,13 @@ import { ChatPanel } from './chatPanel';
 import { SessionProvider } from './sessionProvider';
 import { SidebarProvider } from './sidebarProvider';
 import { migrateLegacy } from './storage';
+import { DashboardPanel } from './dashboardPanel';
+import { RulesEngine } from './rulesEngine';
 
 export function activate(context: vscode.ExtensionContext) {
     migrateLegacy(context);
+
+    RulesEngine.getInstance().activate(context);
 
     const sp = new SessionProvider(context);
     const sidebar = new SidebarProvider(context, sp);
@@ -14,6 +18,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(SidebarProvider.viewId, sidebar),
         vscode.commands.registerCommand('flashCode.open', () => ChatPanel.createOrShow(context, sp)),
+        vscode.commands.registerCommand('flashCode.openDashboard', () => DashboardPanel.createOrShow(context)),
         vscode.commands.registerCommand('flashCode.newChat', () => { ChatPanel.createOrShow(context, sp); ChatPanel.cur?.newChat(); }),
         vscode.commands.registerCommand('flashCode.sendFile', () => { ChatPanel.createOrShow(context, sp); ChatPanel.cur?.sendCurrentFile(); }),
         vscode.commands.registerCommand('flashCode.switchBackend', async () => {

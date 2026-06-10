@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mission Control</title>
+    <style>
+        :root {
+            --bg: var(--vscode-editor-background, #1e1e1e);
+            --fg: var(--vscode-editor-foreground, #ccc);
+            --dim: var(--vscode-descriptionForeground, #888);
+            --border: var(--vscode-panel-border, #444);
+            --accent: var(--vscode-button-background, #0e639c);
+            --card-bg: var(--vscode-editorWidget-background, #252526);
+        }
+        body {
+            font-family: var(--vscode-font-family, sans-serif);
+            background: var(--bg);
+            color: var(--fg);
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        h1 { margin: 0; font-size: 20px; font-weight: 600; }
+        .kanban {
+            display: flex;
+            gap: 15px;
+            flex: 1;
+            overflow-x: auto;
+        }
+        .col {
+            flex: 1;
+            min-width: 250px;
+            background: rgba(0,0,0,0.1);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+        }
+        .col-title {
+            padding: 10px;
+            font-weight: 600;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .col-count {
+            background: var(--accent);
+            color: white;
+            border-radius: 10px;
+            padding: 0 6px;
+            font-size: 11px;
+        }
+        .cards {
+            padding: 10px;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .card-role {
+            font-size: 11px;
+            color: var(--dim);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .card-obj {
+            font-weight: 500;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        .card-prog {
+            font-size: 11px;
+            color: var(--dim);
+            padding: 4px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .empty-col {
+            font-size: 12px;
+            color: var(--dim);
+            text-align: center;
+            padding: 20px 0;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Mission Control</h1>
+        <div style="font-size: 12px; color: var(--dim);">Active Agents: <span id="tot-count">0</span>/5</div>
+    </header>
+    
+    <div class="kanban">
+        <div class="col" id="col-Analyzing">
+            <div class="col-title">Analyzing <span class="col-count">0</span></div>
+            <div class="cards"></div>
+        </div>
+        <div class="col" id="col-Planning">
+            <div class="col-title">Planning <span class="col-count">0</span></div>
+            <div class="cards"></div>
+        </div>
+        <div class="col" id="col-Executing">
+            <div class="col-title">Executing <span class="col-count">0</span></div>
+            <div class="cards"></div>
+        </div>
+        <div class="col" id="col-Awaiting_Approval">
+            <div class="col-title">Inbox (Awaiting) <span class="col-count">0</span></div>
+            <div class="cards"></div>
+        </div>
+        <div class="col" id="col-Completed">
+            <div class="col-title">Completed <span class="col-count">0</span></div>
+            <div class="cards"></div>
+        </div>
+    </div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+
+        const columns = ['Analyzing', 'Planning', 'Executing', 'Awaiting_Approval', 'Completed'];
+
+        function render(agents) {
+            document.getElementById('tot-count').innerText = agents.length;
+            
+            const grouped = {};
+            columns.forEach(c => grouped[c] = []);
+            
+            agents.forEach(a => {
+                if (grouped[a.status]) grouped[a.status].push(a);
+            });
+
+            columns.forEach(col => {
+                const arr = grouped[col];
+                const colEl = document.getElementById('col-' + col);
+                colEl.querySelector('.col-count').innerText = arr.length;
+                
+                const cardsEl = colEl.querySelector('.cards');
+                if (arr.length === 0) {
+                    cardsEl.innerHTML = '<div class="empty-col">No tasks</div>';
+                } else {
+                    cardsEl.innerHTML = arr.map(a => `
+                        <div class="card">
+                            <div class="card-role">${a.role}</div>
+                            <div class="card-obj">${a.objective}</div>
+                            <div class="card-prog">${a.progress}</div>
+                            ${a.status === 'Awaiting_Approval' ? `<button onclick="approveTask('${a.id}')" style="margin-top:10px; width:100%; background:var(--accent); color:white; border:none; padding:5px; border-radius:3px; cursor:pointer;">Approve & Merge</button>` : ''}
+                        </div>
+                    `).join('');
+                }
+            });
+        }
+
+        function approveTask(id) {
+            vscode.postMessage({ command: 'approveTask', id });
+        }
+
+        window.addEventListener('message', e => {
+            const m = e.data;
+            if (m.command === 'updateState') {
+                render(m.agents || []);
+            }
+        });
+
+        // Initialize empty state
+        render([]);
+        vscode.postMessage({ command: 'ready' });
+    </script>
+</body>
+</html>

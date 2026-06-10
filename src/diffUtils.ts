@@ -24,7 +24,7 @@ export function computeSideBySide(oldText: string, newText: string, ctx = 3): Di
     } else {
         rows = lcsDiff(o, n);
     }
-    return collapse(rows, ctx);
+    return rows;
 }
 
 function lcsDiff(o: string[], n: string[]): DiffRow[] {

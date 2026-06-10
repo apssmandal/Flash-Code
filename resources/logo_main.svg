@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="codeBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#090D16" />
+      <stop offset="100%" stop-color="#111622" />
+    </linearGradient>
+
+    <linearGradient id="flashGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFEB00" />
+      <stop offset="100%" stop-color="#FF6A00" />
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="140" fill="url(#codeBg)" />
+
+  <g fill="none" stroke="#FFFFFF" stroke-width="52" stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="4">
+    <path d="M 160 140 L 70 256 L 160 372" />
+    <path d="M 352 140 L 442 256 L 352 372" />
+  </g>
+
+  <polygon points="325,60 185,245 270,245 165,452 345,255 260,255" 
+           fill="url(#flashGold)" 
+           stroke="url(#flashGold)"
+           stroke-width="24"
+           stroke-linejoin="round" />
+</svg>
