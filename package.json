@@ -1,10 +1,14 @@
 {
   "name": "flash-code",
   "displayName": "Flash Code",
-  "description": "AI coding assistant — Claude Code-style agentic chat powered by round-robin free-tier Gemini API keys and Ollama",
-  "version": "2.1.0",
+  "description": "AI coding assistant — Claude Code-grade agentic backend powered by a pluggable multi-provider engine (Gemini round-robin free tier, Anthropic, OpenAI, OpenRouter, Groq, DeepSeek, Ollama).",
+  "version": "2.3.0",
   "publisher": "Animixer",
   "homepage": "https://animixer.in",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apssmandal/Flash-Code.git"
+  },
   "author": {
     "name": "Arpan Mandal",
     "url": "https://animixer.in"
@@ -19,8 +23,16 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "scripts": {
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "typecheck": "tsc -p ./tsconfig.json --noEmit",
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "vscode:prepublish": "npm run build -- --production",
+    "package": "vsce package --allow-missing-repository",
+    "prepare": "husky || exit 0"
   },
   "contributes": {
     "viewsContainers": {
@@ -56,12 +68,16 @@
         "title": "Flash Code: New Chat"
       },
       {
-        "command": "flashCode.switchBackend",
-        "title": "Flash Code: Switch Backend"
+        "command": "flashCode.switchProvider",
+        "title": "Flash Code: Switch Provider"
       },
       {
         "command": "flashCode.switchModel",
         "title": "Flash Code: Switch Model"
+      },
+      {
+        "command": "flashCode.manageKeys",
+        "title": "Flash Code: Manage API Keys"
       },
       {
         "command": "flashCode.sendFile",
@@ -79,15 +95,87 @@
     "configuration": {
       "title": "Flash Code",
       "properties": {
-        "flashCode.defaultBackend": {
+        "flashCode.provider": {
           "type": "string",
           "default": "gemini",
           "enum": [
-            "ollama",
             "gemini",
-            "nvidia"
+            "anthropic",
+            "openai",
+            "openrouter",
+            "groq",
+            "deepseek",
+            "nvidia",
+            "ollama"
           ],
-          "description": "Default AI backend"
+          "enumDescriptions": [
+            "Google Gemini — free-tier with multi-key round-robin rotation",
+            "Anthropic Claude — native tool-use, highest coding quality",
+            "OpenAI GPT — native tool-use",
+            "OpenRouter — single key, hundreds of models",
+            "Groq — ultra-fast OpenAI-compatible inference",
+            "DeepSeek — cheap, strong coding (OpenAI-compatible)",
+            "Nvidia — OpenAI-compatible endpoint",
+            "Ollama — local models (XML tool-use fallback)"
+          ],
+          "description": "Active AI provider. API keys are stored securely via VS Code Secret Storage — use the 'Flash Code: Manage API Keys' command or the sidebar settings."
+        },
+        "flashCode.gemini.model": {
+          "type": "string",
+          "default": "gemini-2.5-flash",
+          "enum": [
+            "gemini-2.5-flash",
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite",
+            "gemini-3.5-flash"
+          ],
+          "description": "Gemini model"
+        },
+        "flashCode.anthropic.model": {
+          "type": "string",
+          "default": "claude-sonnet-4-6",
+          "description": "Anthropic Claude model (e.g. claude-opus-4-8, claude-sonnet-4-6, claude-haiku-4-5)"
+        },
+        "flashCode.openai.model": {
+          "type": "string",
+          "default": "gpt-4o",
+          "description": "OpenAI model"
+        },
+        "flashCode.openrouter.model": {
+          "type": "string",
+          "default": "anthropic/claude-sonnet-4-6",
+          "description": "OpenRouter model slug"
+        },
+        "flashCode.groq.model": {
+          "type": "string",
+          "default": "llama-3.3-70b-versatile",
+          "description": "Groq model"
+        },
+        "flashCode.deepseek.model": {
+          "type": "string",
+          "default": "deepseek-chat",
+          "description": "DeepSeek model"
+        },
+        "flashCode.nvidia.model": {
+          "type": "string",
+          "default": "nvidia/nemotron-3-ultra-550b-a55b",
+          "description": "Nvidia / OpenAI-compatible model name"
+        },
+        "flashCode.nvidia.url": {
+          "type": "string",
+          "default": "https://integrate.api.nvidia.com/v1",
+          "description": "Nvidia / OpenAI-compatible base URL"
+        },
+        "flashCode.customEndpoint.url": {
+          "type": "string",
+          "default": "",
+          "description": "Optional base URL override for an OpenAI-compatible provider"
+        },
+        "flashCode.customModels": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Custom model IDs per provider, managed from the sidebar settings. Lets you use new/future models without an update. Example: `{ \"gemini\": [\"gemini-3.5-pro\"], \"openrouter\": [\"vendor/new-model\"] }`",
+          "additionalProperties": { "type": "array", "items": { "type": "string" } }
         },
         "flashCode.ollama.url": {
           "type": "string",
@@ -99,80 +187,15 @@
           "default": "qwen3-coder",
           "description": "Ollama model"
         },
-        "flashCode.ollama.temperature": {
-          "type": "number",
-          "default": 0.2,
-          "description": "Temperature setting for local Ollama models (lower is more deterministic)"
-        },
         "flashCode.ollama.numCtx": {
           "type": "integer",
-          "default": 4096,
+          "default": 8192,
           "description": "Context window size (num_ctx) for local Ollama models (in tokens)"
-        },
-        "flashCode.nvidia.apiKey": {
-          "type": "string",
-          "default": "",
-          "description": "Nvidia / OpenAI API Key"
-        },
-        "flashCode.nvidia.url": {
-          "type": "string",
-          "default": "https://integrate.api.nvidia.com/v1",
-          "description": "Nvidia / OpenAI Base URL"
-        },
-        "flashCode.nvidia.model": {
-          "type": "string",
-          "default": "nvidia/nemotron-3-ultra-550b-a55b",
-          "description": "Nvidia / OpenAI Model Name"
-        },
-        "flashCode.nvidia.temperature": {
-          "type": "number",
-          "default": 1.0,
-          "description": "Temperature setting for Nvidia / OpenAI models"
-        },
-        "flashCode.nvidia.maxTokens": {
-          "type": "integer",
-          "default": 16384,
-          "description": "Max tokens for Nvidia / OpenAI models"
-        },
-        "flashCode.nvidia.stream": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable streaming for Nvidia / OpenAI models"
-        },
-        "flashCode.gemini.apiKey": {
-          "type": "string",
-          "default": "",
-          "description": "Single Gemini API key (fallback)"
-        },
-        "flashCode.gemini.apiKeys": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [],
-          "description": "Multiple keys — round-robin per request"
-        },
-        "flashCode.gemini.model": {
-          "type": "string",
-          "default": "gemini-2.5-flash",
-          "enum": [
-            "gemini-2.5-flash",
-            "gemini-3-flash-preview",
-            "gemini-3.1-flash-lite",
-            "gemini-3.5-flash"
-          ],
-          "enumDescriptions": [
-            "Gemini 2.5 Flash — balanced, higher free-tier RPM",
-            "Gemini 3 Flash — next-generation fast model",
-            "Gemini 3.1 Flash Lite — highly efficient, fast reasoning model",
-            "Gemini 3.5 Flash — latest, most capable Flash model"
-          ],
-          "description": "Gemini model"
         },
         "flashCode.autoApprove": {
           "type": "boolean",
           "default": false,
-          "description": "Auto-approve code changes"
+          "description": "Auto-approve code changes and commands (use with care)"
         },
         "flashCode.mode": {
           "type": "string",
@@ -187,7 +210,7 @@
             "Ask before edit — review every change",
             "Edit automatically — apply edits without prompting",
             "Plan mode — analyze and plan, no file writes",
-            "Auto Mode — fully autonomous agent execution"
+            "Autonomous — fully autonomous agent execution"
           ],
           "description": "Default interaction mode"
         },
@@ -201,12 +224,30 @@
             "xhigh",
             "max"
           ],
-          "description": "Default effort / token-thinking budget"
+          "description": "Default effort / thinking budget"
         },
         "flashCode.rateLimit.requestsPerMinute": {
           "type": "integer",
           "default": 15,
-          "description": "Global rate limit for all keys combined (requests per minute) to prevent IP-based rate limiting on the free tier"
+          "description": "Global rate limit across all keys of the active provider (requests per minute) — protects the free tier from IP rate-limiting"
+        },
+        "flashCode.gemini.apiKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "**Deprecated** — keys are now stored in Secret Storage and migrated automatically on first run. Use 'Flash Code: Manage API Keys' instead. Values here are migrated then cleared."
+        },
+        "flashCode.gemini.apiKey": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "**Deprecated** — migrated to Secret Storage automatically. Use 'Flash Code: Manage API Keys'."
+        },
+        "flashCode.nvidia.apiKey": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "**Deprecated** — migrated to Secret Storage automatically. Use 'Flash Code: Manage API Keys'."
         }
       }
     }
@@ -214,6 +255,13 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
-    "typescript": "^5.3.0"
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^8.57.0",
+    "husky": "^9.1.0",
+    "typescript": "^5.3.0",
+    "vitest": "^2.1.0"
   }
 }

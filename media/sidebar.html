@@ -50,9 +50,6 @@ details.grp summary .chev svg{width:12px;height:12px;transition:transform 0.2s}
 details.grp[open] summary .chev svg{transform:rotate(90deg)}
 .grp-body{margin-top:8px}
 .sublbl{font-size:10px;color:var(--dim);margin-top:6px;margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:0.02em}
-.pill{display:block;width:100%;text-align:left;background:rgba(128,128,128,0.04);border:1px solid var(--inbd);color:var(--fg);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:12px;margin-bottom:6px;transition:all 0.2s ease}
-.pill:hover{background:var(--hover);border-color:var(--accent)}
-.pill.on{border-color:var(--accent);background:rgba(78,161,255,0.08);color:var(--accent);font-weight:600}
 .keyrow{display:flex;gap:6px;align-items:center;margin-bottom:6px;width:100%}
 .keyrow input{flex:1;background:var(--inbg);color:var(--infg);border:1px solid var(--inbd);border-radius:6px;padding:6px 10px;font-size:11px;font-family:var(--mono);outline:none;transition:border-color 0.2s}
 .keyrow input:focus{border-color:var(--accent)}
@@ -66,6 +63,11 @@ input.txt:focus,select.txt:focus{border-color:var(--accent)}
 #save{width:100%;background:var(--btnbg);color:var(--btnfg);border:none;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;font-weight:600;margin-top:10px;box-shadow:0 2px 8px var(--shadow);transition:opacity 0.2s}
 #save:hover{opacity:.95}
 .note{font-size:11px;color:var(--dim);margin-top:5px;line-height:1.4}
+.addmodel-row{display:flex;gap:6px;margin-top:6px}
+#customModelChips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mchip{display:inline-flex;align-items:center;gap:6px;background:rgba(78,161,255,0.08);border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:3px 8px;font-size:11px}
+.mchip button{background:none;border:none;color:inherit;cursor:pointer;display:inline-flex;padding:0}
+.mchip svg{width:11px;height:11px}
 </style></head><body>
 <div id="hd"><span class="t">Flash Code</span><button class="icobtn" id="dashbtn" title="Mission Control Dashboard" onclick="V.postMessage({command:'openDashboard'})"></button><button class="icobtn" id="gear" title="Settings"></button></div>
 <button id="new" onclick="V.postMessage({command:'newSession'})"><span id="newic"></span> New Session</button>
@@ -75,22 +77,33 @@ input.txt:focus,select.txt:focus{border-color:var(--accent)}
 <div id="settings">
   <div class="sh"><button class="icobtn" id="backbtn" onclick="closeSettings()"></button><span>Settings</span></div>
   <div class="body">
-    <div class="grp"><label>Model</label>
-      <select class="txt" id="modelSelect" onchange="pickModel(this)">
-        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-        <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-        <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
-        <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-        <option value="ollama">Ollama (local)</option>
+    <div class="grp"><label>AI Provider</label>
+      <select class="txt" id="providerSelect" onchange="pickProvider(this.value)">
+        <option value="gemini">Google Gemini</option>
+        <option value="anthropic">Anthropic (Claude)</option>
+        <option value="openai">OpenAI</option>
+        <option value="openrouter">OpenRouter</option>
+        <option value="groq">Groq</option>
+        <option value="deepseek">DeepSeek</option>
         <option value="nvidia">Nvidia (OpenAI-compat)</option>
+        <option value="ollama">Ollama (local)</option>
       </select>
     </div>
-    <details class="grp" id="geminiKeysGrp">
-      <summary>Gemini API Keys (round-robin) <span id="chevIc" class="chev"></span></summary>
+    <div class="grp"><label>Model</label>
+      <select class="txt" id="modelSelect"></select>
+      <div id="customModelChips"></div>
+      <div class="addmodel-row">
+        <input class="txt" id="addModelInput" placeholder="Add custom model ID…" style="margin-bottom:0" onkeydown="if(event.key==='Enter'){event.preventDefault();addModel();}"/>
+        <button class="addk" style="width:auto;padding:0 14px" onclick="addModel()">Add</button>
+      </div>
+      <div class="note">Type any model ID to use new/future models — saved per provider.</div>
+    </div>
+    <details class="grp" id="keysGrp" open>
+      <summary><span id="keysLabel">API Keys</span> <span id="chevIc" class="chev"></span></summary>
       <div class="grp-body">
         <div id="keys"></div>
         <button class="addk" onclick="addKey('')">&#43; Add key</button>
-        <div class="note">Multiple keys rotate automatically to dodge the ~15 req/min free-tier limit.</div>
+        <div class="note" id="keysNote">Multiple keys rotate automatically to dodge the ~15 req/min free-tier limit.</div>
       </div>
     </details>
     <div class="grp" id="ollamaGrp" style="display:none"><label>Ollama Settings</label>
@@ -98,38 +111,34 @@ input.txt:focus,select.txt:focus{border-color:var(--accent)}
       <input class="txt" id="oUrl" placeholder="http://localhost:11434"/>
       <div class="sublbl">Model Name</div>
       <input class="txt" id="oModel" placeholder="qwen3-coder"/>
-      <div class="sublbl">Temperature</div>
-      <input class="txt" id="oTemp" type="number" step="0.1" min="0" max="1.5" placeholder="0.2"/>
       <div class="sublbl">Context Length (tokens)</div>
-      <input class="txt" id="oNumCtx" type="number" step="1024" min="2048" placeholder="4096"/>
+      <input class="txt" id="oNumCtx" type="number" step="1024" min="2048" placeholder="8192"/>
     </div>
-    <div class="grp" id="nvidiaGrp" style="display:none"><label>Nvidia Integration</label>
-      <div class="sublbl">API Key</div>
-      <input type="password" class="txt" id="nvKey" placeholder="nvapi-..."/>
+    <div class="grp" id="nvidiaGrp" style="display:none"><label>Endpoint</label>
       <div class="sublbl">Base URL</div>
       <input class="txt" id="nvUrl" placeholder="https://integrate.api.nvidia.com/v1"/>
-      <div class="sublbl">Model</div>
-      <input class="txt" id="nvModel" placeholder="nvidia/nemotron-3-ultra-550b-a55b"/>
-      <div class="sublbl">Temperature</div>
-      <input class="txt" id="nvTemp" type="number" step="0.1" min="0" max="2" placeholder="1.0"/>
-      <div class="sublbl">Max Tokens</div>
-      <input class="txt" id="nvMaxTokens" type="number" step="1024" min="1024" placeholder="16384"/>
-      <div class="sublbl">Stream Output</div>
-      <select class="txt" id="nvStream"><option value="true">True</option><option value="false">False</option></select>
     </div>
     <div class="grp"><label>Default Mode</label>
-      <select class="txt" id="dMode"><option value="ask">Ask before edit</option><option value="auto-edit">Edit automatically</option><option value="plan">Plan mode</option></select>
+      <select class="txt" id="dMode"><option value="ask">Ask before edit</option><option value="auto-edit">Edit automatically</option><option value="plan">Plan mode</option><option value="autonomous">Autonomous</option></select>
     </div>
     <div class="grp"><label>Default Effort</label>
       <select class="txt" id="dEffort"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">xHigh</option><option value="max">Max</option></select>
     </div>
-    <div class="note">Theme follows VS Code automatically.</div>
+    <div class="note">Keys are stored in VS Code Secret Storage. Theme follows VS Code automatically.</div>
     <button id="save" onclick="saveSettings()">Save Settings</button>
+    <details class="grp" id="usageGrp" style="margin-top:14px" ontoggle="if(this.open)V.postMessage({command:'getUsage'})">
+      <summary><span>Usage &amp; Tokens</span> <span id="usageChev" class="chev"></span></summary>
+      <div class="grp-body">
+        <div id="usageBody"><div class="note">No usage recorded yet.</div></div>
+        <button class="addk" id="clearUsageBtn" onclick="clearUsage()" style="margin-top:8px">Clear usage data</button>
+        <div class="note">Counts every model call this workspace made — input (sent) and output (received) tokens, per session and model.</div>
+      </div>
+    </details>
   </div>
 </div>
 
 <script>
-const V=acquireVsCodeApi();let sessions=[],curModel='gemini-2.5-flash',keyStatuses=[];
+const V=acquireVsCodeApi();let sessions=[],curProvider='gemini',keyStatuses=[];
 const IC={
 gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
 plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
@@ -148,6 +157,7 @@ document.getElementById('gear').innerHTML=sv('gear');
 document.getElementById('newic').innerHTML=sv('plus');
 document.getElementById('backbtn').innerHTML=sv('back');
 document.getElementById('chevIc').innerHTML=sv('chevron');
+document.getElementById('usageChev').innerHTML=sv('chevron');
 
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function render(){const q=document.getElementById('search').value.toLowerCase();const list=document.getElementById('list');
@@ -160,86 +170,88 @@ function del(id){V.postMessage({command:'deleteSession',id})}
 
 document.getElementById('gear').onclick=()=>{document.getElementById('settings').classList.add('show');V.postMessage({command:'getSettings'})};
 function closeSettings(){document.getElementById('settings').classList.remove('show')}
-function pickModel(b){curModel=b.value;
-  document.getElementById('ollamaGrp').style.display=curModel==='ollama'?'block':'none';
-  document.getElementById('nvidiaGrp').style.display=curModel==='nvidia'?'block':'none';
-  document.getElementById('geminiKeysGrp').style.display=curModel.startsWith('gemini')?'block':'none';
+
+function pickProvider(p){curProvider=p;applyProviderVisibility(p);V.postMessage({command:'selectProvider',provider:p});}
+function applyProviderVisibility(p){
+  document.getElementById('ollamaGrp').style.display=p==='ollama'?'block':'none';
+  document.getElementById('nvidiaGrp').style.display=p==='nvidia'?'block':'none';
+  const keysGrp=document.getElementById('keysGrp');keysGrp.style.display=p==='ollama'?'none':'block';
+  document.getElementById('keysLabel').textContent=p==='gemini'?'Gemini API Keys (round-robin)':'API Key';
+  document.getElementById('keysNote').style.display=p==='gemini'?'block':'none';
 }
+let curModels=[],builtinSet=new Set();
+function renderModelUI(current){
+  const sel=document.getElementById('modelSelect');
+  sel.innerHTML=curModels.map(m=>'<option value="'+esc(m)+'"'+(m===current?' selected':'')+'>'+esc(m)+(builtinSet.has(m)?'':' (custom)')+'</option>').join('')||'<option value="">(none)</option>';
+  const custom=curModels.filter(m=>!builtinSet.has(m));
+  document.getElementById('customModelChips').innerHTML=custom.map(m=>'<span class="mchip">'+esc(m)+'<button title="Remove" onclick="removeModel(\''+esc(m).replace(/'/g,'')+'\')">'+sv('x')+'</button></span>').join('');
+}
+function setModels(models,current,builtin){builtinSet=new Set(builtin&&builtin.length?builtin:(models||[]));curModels=Array.from(new Set([...(builtin||[]),...(models||[])]));renderModelUI(current||curModels[0]||'');}
+function addModel(){const inp=document.getElementById('addModelInput');const v=inp.value.trim();if(!v)return;if(!curModels.includes(v))curModels.push(v);inp.value='';renderModelUI(v);}
+function removeModel(m){curModels=curModels.filter(x=>x!==m);const sel=document.getElementById('modelSelect');renderModelUI(sel.value===m?(curModels[0]||''):sel.value);}
+
 function dot(c,title){return '<span class="st" title="'+(title||'')+'" style="width:9px;height:9px;border-radius:50%;background:'+c+';display:inline-block"></span>'}
 function statusIcon(st){if(!st)return dot('var(--vscode-charts-green,#3fb950)','Ready');if(st.status==='limited')return dot('var(--vscode-charts-yellow,#d7a700)','Rate-limited '+Math.ceil(st.cooldownMs/1000)+'s');if(st.status==='error')return dot('var(--vscode-charts-red,#f85149)','Error');return dot('var(--vscode-charts-green,#3fb950)','Ready')}
 
-function toggleVisibility(btn) {
-  const keyrow = btn.closest('.keyrow');
-  const input = keyrow.querySelector('input');
-  if (input.type === 'password') {
-    input.type = 'text';
-    btn.innerHTML = sv('eyeOff');
-  } else {
-    input.type = 'password';
-    btn.innerHTML = sv('eye');
-  }
-}
-
-function renderKeys(keys){
-  const box=document.getElementById('keys');
-  box.innerHTML=keys.map((k,i)=>'<div class="keyrow">'
-    +'<input type="password" value="'+esc(k)+'"/>'
-    +'<button class="icobtn eye-btn" onclick="toggleVisibility(this)" title="Toggle Visibility">'+sv('eye')+'</button>'
-    +statusIcon(keyStatuses[i])
-    +'<button class="rm" onclick="this.closest(\'.keyrow\').remove()">'+sv('x')+'</button>'
-    +'</div>').join('');
-}
-function addKey(v){
-  const box=document.getElementById('keys');
-  const d=document.createElement('div');
-  d.className='keyrow';
-  d.innerHTML='<input type="password" value="'+esc(v)+'"/>'
-    +'<button class="icobtn eye-btn" onclick="toggleVisibility(this)" title="Toggle Visibility">'+sv('eye')+'</button>'
-    +statusIcon(null)
-    +'<button class="rm" onclick="this.closest(\'.keyrow\').remove()">'+sv('x')+'</button>';
-  box.appendChild(d);
-}
+function toggleVisibility(btn){const r=btn.closest('.keyrow'),i=r.querySelector('input');if(i.type==='password'){i.type='text';btn.innerHTML=sv('eyeOff');}else{i.type='password';btn.innerHTML=sv('eye');}}
+function keyRowHtml(k,i){return '<div class="keyrow"><input type="password" value="'+esc(k)+'"/><button class="icobtn eye-btn" onclick="toggleVisibility(this)" title="Toggle Visibility">'+sv('eye')+'</button>'+statusIcon(keyStatuses[i])+'<button class="rm" onclick="this.closest(\'.keyrow\').remove()">'+sv('x')+'</button></div>';}
+function renderKeys(keys){document.getElementById('keys').innerHTML=keys.map((k,i)=>keyRowHtml(k,i)).join('');}
+function addKey(v){const box=document.getElementById('keys');const d=document.createElement('div');d.className='keyrow';d.innerHTML='<input type="password" value="'+esc(v)+'"/><button class="icobtn eye-btn" onclick="toggleVisibility(this)" title="Toggle Visibility">'+sv('eye')+'</button>'+statusIcon(null)+'<button class="rm" onclick="this.closest(\'.keyrow\').remove()">'+sv('x')+'</button>';box.appendChild(d);}
 
 function saveSettings(){
   const keys=[...document.querySelectorAll('#keys input')].map(i=>i.value.trim()).filter(Boolean);
   V.postMessage({command:'saveSettings',settings:{
-    model:curModel,
+    provider:curProvider,
+    model:document.getElementById('modelSelect').value,
+    customModels:curModels.filter(m=>!builtinSet.has(m)),
     apiKeys:keys,
     ollamaUrl:document.getElementById('oUrl').value.trim(),
     ollamaModel:document.getElementById('oModel').value.trim(),
-    ollamaTemp:document.getElementById('oTemp').value.trim(),
     ollamaNumCtx:document.getElementById('oNumCtx').value.trim(),
-    nvidiaKey:document.getElementById('nvKey').value.trim(),
     nvidiaUrl:document.getElementById('nvUrl').value.trim(),
-    nvidiaModel:document.getElementById('nvModel').value.trim(),
-    nvidiaTemp:parseFloat(document.getElementById('nvTemp').value.trim()||'1.0'),
-    nvidiaMaxTokens:parseInt(document.getElementById('nvMaxTokens').value.trim()||'16384',10),
-    nvidiaStream:document.getElementById('nvStream').value === 'true',
     defaultMode:document.getElementById('dMode').value,
     defaultEffort:document.getElementById('dEffort').value
   }});
+  closeSettings();
+}
+
+/* ---- usage & tokens ---- */
+function fmtTok(n){n=n||0;if(n<1000)return String(n);if(n<1e6)return (n/1e3).toFixed(1).replace(/\.0$/,'')+'k';return (n/1e6).toFixed(1).replace(/\.0$/,'')+'M';}
+function tot(t){return (t.calls||0)+(t.calls===1?' call':' calls')+' · ↑'+fmtTok(t.inputTokens)+' ↓'+fmtTok(t.outputTokens);}
+function renderUsage(u){
+  const body=document.getElementById('usageBody');
+  if(!u||!u.sessions||!u.sessions.length){body.innerHTML='<div class="note">No usage recorded yet.</div>';return;}
+  let h='<div style="font-size:12px;font-weight:600;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:6px">Total: '+tot(u.grand)+'</div>';
+  h+=u.sessions.map(s=>{
+    const rows=s.models.map(mu=>'<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0 2px 10px;color:var(--dim);font-size:11px"><span style="font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(mu.provider)+'/'+esc(mu.model)+'</span><span style="white-space:nowrap">'+mu.calls+'c ↑'+fmtTok(mu.inputTokens)+' ↓'+fmtTok(mu.outputTokens)+'</span></div>').join('');
+    return '<details style="margin:4px 0"><summary style="font-size:12px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(s.title)+'</span><span style="white-space:nowrap;color:var(--dim);font-size:11px">'+tot(s.totals)+'</span></summary>'+rows+'</details>';
+  }).join('');
+  body.innerHTML=h;
+}
+/* webviews don't support window.confirm — use a two-click arm instead */
+let _clearArm=null;
+function clearUsage(){
+  const b=document.getElementById('clearUsageBtn');
+  if(_clearArm){clearTimeout(_clearArm);_clearArm=null;b.textContent='Clear usage data';V.postMessage({command:'clearUsage'});return;}
+  b.textContent='Click again to confirm';
+  _clearArm=setTimeout(()=>{_clearArm=null;b.textContent='Clear usage data';},3000);
 }
 
 window.addEventListener('message',e=>{const m=e.data;
-  if(m.command==='openSettings'){document.getElementById('settings').classList.add('show');V.postMessage({command:'getSettings'})}
+  if(m.command==='openSettings'){document.getElementById('settings').classList.add('show');V.postMessage({command:'getSettings'});if(document.getElementById('usageGrp').open)V.postMessage({command:'getUsage'})}
+  else if(m.command==='usageData'){renderUsage(m.usage)}
   else if(m.command==='sessionList'){sessions=m.sessions||[];render()}
   else if(m.command==='settingsData'){
-    const s=m.settings;curModel=s.model;keyStatuses=m.keyStatuses||[];
-    document.getElementById('modelSelect').value=s.model;
-    document.getElementById('ollamaGrp').style.display=s.model==='ollama'?'block':'none';
-    document.getElementById('nvidiaGrp').style.display=s.model==='nvidia'?'block':'none';
-    document.getElementById('geminiKeysGrp').style.display=s.model.startsWith('gemini')?'block':'none';
+    const s=m.settings;curProvider=s.provider||'gemini';keyStatuses=m.keyStatuses||[];
+    document.getElementById('providerSelect').value=curProvider;
+    applyProviderVisibility(curProvider);
+    setModels(s.models,s.model,s.builtinModels);
     document.getElementById('oUrl').value=s.ollamaUrl||'';
     document.getElementById('oModel').value=s.ollamaModel||'';
-    document.getElementById('oTemp').value=s.ollamaTemp!==undefined?s.ollamaTemp:'0.2';
-    document.getElementById('oNumCtx').value=s.ollamaNumCtx!==undefined?s.ollamaNumCtx:'4096';
-    document.getElementById('nvKey').value=s.nvidiaKey||'';
+    document.getElementById('oNumCtx').value=s.ollamaNumCtx!==undefined?s.ollamaNumCtx:'8192';
     document.getElementById('nvUrl').value=s.nvidiaUrl||'https://integrate.api.nvidia.com/v1';
-    document.getElementById('nvModel').value=s.nvidiaModel||'nvidia/nemotron-3-ultra-550b-a55b';
-    document.getElementById('nvTemp').value=s.nvidiaTemp!==undefined?s.nvidiaTemp:'1.0';
-    document.getElementById('nvMaxTokens').value=s.nvidiaMaxTokens!==undefined?s.nvidiaMaxTokens:'16384';
-    document.getElementById('nvStream').value=s.nvidiaStream!==undefined?String(s.nvidiaStream):'true';
-    document.getElementById('dMode').value=s.defaultMode||'ask';document.getElementById('dEffort').value=s.defaultEffort||'medium';
+    document.getElementById('dMode').value=s.defaultMode||'ask';
+    document.getElementById('dEffort').value=s.defaultEffort||'medium';
     renderKeys(s.apiKeys&&s.apiKeys.length?s.apiKeys:['']);}
   else if(m.command==='keyStatusUpdate'){keyStatuses[m.status.idx]=m.status;const rows=document.querySelectorAll('#keys .keyrow .st');if(rows[m.status.idx])rows[m.status.idx].outerHTML=statusIcon(m.status);}
 });

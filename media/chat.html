@@ -403,7 +403,7 @@ body.vscode-light .tl::before{background:var(--accent)}
 .pop{display:none;position:absolute;bottom:64px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;min-width:300px;max-height:340px;overflow-y:auto;box-shadow:0 10px 32px rgba(0,0,0,.5);z-index:60}
 .pop.show{display:block}
 #pmenu{left:14px}#smenu{left:14px}#modemenu{right:14px;min-width:230px}
-.pftop{display:flex;align-items:center;border-bottom:1px solid var(--border)}
+.pftop{display:flex;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:2;border-radius:11px 11px 0 0}
 .pf{flex:1;background:transparent;color:var(--infg);border:none;padding:10px 13px;font-size:12px;outline:none}
 .popx{background:none;border:none;color:var(--dim);cursor:pointer;padding:6px 10px;display:inline-flex}.popx:hover{color:var(--fg)}
 .erange{width:84px;vertical-align:middle;accent-color:var(--accent)}
@@ -473,7 +473,8 @@ const EFF=['low','medium','high','xhigh','max'];
 const MODES = [
   ['ask', 'Ask before edit', 'Review every change before it applies'],
   ['auto-edit', 'Edit automatically', 'Apply edits without asking'],
-  ['plan', 'Plan mode', 'Analyse and plan, no file writes']
+  ['plan', 'Plan mode', 'Analyse and plan, no file writes'],
+  ['autonomous', 'Autonomous', 'Plan, code, run & fix end-to-end']
 ];
 
 /* ---- feather icons ---- */
@@ -923,15 +924,15 @@ function buildActions(){const a=[
   {cat:'Commands',t:'/review',d:'Review recent changes',f:()=>runPrompt('Review my recent changes for bugs, edge cases, and improvements.')},
   {cat:'Commands',t:'/doc',d:'Add docs/comments',f:()=>runPrompt('Add clear documentation comments to the active file.')},
   {cat:'Commands',t:'/plan',d:'Switch to Plan mode',f:()=>setMode('plan')},
+  {cat:'Commands',t:'/auto',d:'Switch to Autonomous mode',f:()=>setMode('autonomous')},
   {cat:'Commands',t:'/ask',d:'Switch to Ask-before-edit',f:()=>setMode('ask')},
-  {cat:'Agents',t:'/agent research …',d:'Spawn background research worker',f:()=>prefillAgent('research')},
-  {cat:'Agents',t:'/agent test …',d:'Spawn background test verification',f:()=>prefillAgent('test')},
-  {cat:'Agents',t:'/agent lint …',d:'Spawn background code formatting',f:()=>prefillAgent('lint')},
-  {cat:'Agents',t:'/agent refactor …',d:'Spawn background code refactoring',f:()=>prefillAgent('refactor')},
+  {cat:'Agents',t:'/agent WebScout …',d:'Spawn background web research',f:()=>prefillAgent('WebScout')},
+  {cat:'Agents',t:'/agent QA …',d:'Spawn background test/QA worker',f:()=>prefillAgent('QA')},
+  {cat:'Agents',t:'/agent Debugger …',d:'Spawn background diagnostics',f:()=>prefillAgent('Debugger')},
+  {cat:'Agents',t:'/agent Sculptor …',d:'Spawn background refactoring',f:()=>prefillAgent('Sculptor')},
   {cat:'Model',t:'Switch model…',r:()=>curModel,f:()=>{V.postMessage({command:'switchModel'});}},
   {cat:'Model',t:'Effort',r:()=>effSlider(),raw:true,nostay:false,f:()=>{}},
-  {cat:'Model',t:'Thinking',r:()=>'<span class="sw'+(thinking?' on':'')+'"></span>',raw:true,f:()=>toggleThink()},
-  {cat:'Model',t:'API settings…',d:'Models & API keys',f:()=>V.postMessage({command:'openSettings'})},
+  {cat:'Model',t:'API settings…',d:'Provider, models & API keys',f:()=>V.postMessage({command:'openSettings'})},
   {cat:'Model',t:'Toggle fast mode',d:'Low effort, fastest',f:()=>{setEffort('low');}}];
   return a;}
 function effSlider(){return '<input type="range" class="erange" min="0" max="4" value="'+EFF.indexOf(effort)+'" oninput="event.stopPropagation();setEffort(EFF[this.value]);this.nextElementSibling.textContent=effort" onclick="event.stopPropagation()"><span class="elbl">'+effort+'</span>'}
@@ -1120,7 +1121,7 @@ function buildDiff(ch){
   }).join('');
 
   let acts=ch.applied?'<div class="applied-tag">'+sv('check')+'Applied automatically</div>'
-    :'<div class="diff-acts"><button class="dbtn yes" onclick="dAcc(this,false)">'+sv('check')+'Yes</button><button class="dbtn yes" onclick="dAcc(this,true)">Yes, always</button><button class="dbtn no" onclick="dRej(this)">'+sv('x')+'No</button><button class="dbtn" onclick="dTell(this)">Tell instead…</button></div>';
+    :'<div class="diff-acts"><button class="dbtn yes" onclick="dAcc(this,false)">'+sv('check')+'Yes</button><button class="dbtn no" onclick="dRej(this)">'+sv('x')+'No</button><button class="dbtn" onclick="dTell(this)">Tell instead…</button></div>';
   return '<div class="diff" data-p="'+esc(ch.path)+'" data-diff-id="'+esc(ch.diffId || '')+'"><div class="diff-hd"><span class="ic">'+sv('edit')+'</span><span class="p" onclick="openWorkspaceFile(\''+esc(ch.path)+'\')">'+esc(ch.path)+'</span><span class="diff-bd">'+esc(ch.badge||'modified')+'</span></div><div class="diff-cols"><div class="diff-col">'+rows+'</div></div>'+acts+'</div>';}
 function dAcc(b,a){const c=b.closest('.diff');V.postMessage({command:a?'acceptDiffAlways':'acceptDiff',path:c.dataset.p,diffId:c.dataset.diffId});c.querySelector('.diff-acts').outerHTML='<div class="applied-tag">'+sv('check')+'Accepted</div>';}
 function dRej(b){const c=b.closest('.diff');V.postMessage({command:'rejectDiff',path:c.dataset.p,diffId:c.dataset.diffId});c.querySelector('.diff-acts').outerHTML='<div class="applied-tag" style="color:var(--red)">'+sv('x')+'Rejected</div>';}
@@ -1238,17 +1239,24 @@ function finishAgentCard(id, success, finalLog) {
     logs.scrollTop = logs.scrollHeight;
   }
 }
-function buildCommandPermission(cmdId, cmd){
+function buildCommandPermission(cmdId, cmd, threadLabel){
   return '<div class="diff command-permission" data-cmd-id="'+esc(cmdId)+'">'
     + '<div class="diff-hd"><span class="ic">'+sv('term')+'</span><span class="p">Command Execution Requested</span></div>'
     + '<div class="diff-cols" style="padding:10px 14px;"><code style="font-family:var(--mono); color:var(--accent); font-size:12px;">$ '+esc(cmd)+'</code></div>'
     + '<div class="diff-acts">'
     + '<button class="dbtn yes" onclick="approveCmd(this)">'+sv('check')+'Run Command</button>'
+    + threadBtn(threadLabel)
     + '<button class="dbtn no" onclick="rejectCmd(this)">'+sv('x')+'Reject</button>'
     + '</div>'
     + '</div>';
 }
-function buildCodePermission(cmdId, lang, code){
+/* "Allow for this thread" — only for command/code (host sends a threadLabel). Scoped to this
+   message thread and to similar commands; resets on the next user message. */
+function threadBtn(threadLabel){
+  if(!threadLabel) return '';
+  return '<button class="dbtn" title="Auto-allow '+esc(threadLabel)+' until your next message" onclick="approveCmdThread(this)">'+sv('check')+'Allow for this thread</button>';
+}
+function buildCodePermission(cmdId, lang, code, threadLabel){
   let displayLang = lang.toUpperCase();
   if (lang === 'js' || lang === 'javascript') displayLang = 'Node.js';
   else if (lang === 'py' || lang === 'python') displayLang = 'Python';
@@ -1269,6 +1277,7 @@ function buildCodePermission(cmdId, lang, code){
     + '</div>'
     + '<div class="diff-acts">'
     + '<button class="dbtn yes" onclick="approveCmd(this)">'+sv('check')+'Run Code</button>'
+    + threadBtn(threadLabel)
     + '<button class="dbtn no" onclick="rejectCmd(this)">'+sv('x')+'Reject</button>'
     + '</div>'
     + '</div>';
@@ -1277,6 +1286,11 @@ function approveCmd(b){
   const c = b.closest('.diff');
   V.postMessage({command:'agentAcceptCommand', cmdId:c.dataset.cmdId});
   c.querySelector('.diff-acts').outerHTML='<div class="applied-tag">'+sv('check')+'Running...</div>';
+}
+function approveCmdThread(b){
+  const c = b.closest('.diff');
+  V.postMessage({command:'agentAcceptCommandThread', cmdId:c.dataset.cmdId});
+  c.querySelector('.diff-acts').outerHTML='<div class="applied-tag">'+sv('check')+'Running… (similar commands auto-allowed for this thread)</div>';
 }
 function rejectCmd(b){
   const c = b.closest('.diff');
@@ -1344,9 +1358,9 @@ window.addEventListener('message',e=>{const m=e.data;switch(m.command){
     scrollDown();
     break;
   case 'workNotice':{workEl=addItem('ai','<div class="ai-c wl"></div>');shimStart(workEl.querySelector('.wl'),m.text);break;}
-  case 'showNotice':if(workEl){const c=workEl.querySelector('.wl');shimStop(c);c.outerHTML='<div class="notice">'+sv('check')+' '+esc(m.text)+'</div>';workEl=null;}else addItem('ai','<div class="notice">'+esc(m.text)+'</div>');break;
+  case 'showNotice':if(workEl){const c=workEl.querySelector('.wl');shimStop(c);c.outerHTML='<div class="notice">'+sv('check')+' '+esc(m.text)+'</div>';workEl=null;}else{addItem('sys','<div class="notice">'+sv('check')+' '+esc(m.text)+'</div>');showEndLogo();}break;
   case 'addAttachmentToUI':addAtt(m.attachment);document.getElementById('inp').focus();break;
-  case 'showDiff':(m.changes||[]).forEach(ch=>{ch.diffId=m.diffId;if(aiC)aiC.insertAdjacentHTML('beforeend',buildDiff(ch));else addItem('ai',buildDiff(ch),'Flash Code');});scrollDown();break;
+  case 'showDiff':(m.changes||[]).forEach(ch=>{ch.diffId=m.diffId;try{addItem('ai',buildDiff(ch),'Flash Code');}catch(err){addItem('err','<div class="errbox"><div class="errhd">'+sv('x')+' Diff render error</div><div class="errmsg">'+esc(String((err&&err.message)||err))+'</div></div>');}});scrollDown();break;
   case 'changeCard':addItem('tool','<div class="notice">'+sv('check')+'<span>'+esc(m.summary||'changed')+': <code class="il" style="cursor:pointer;" onclick="openWorkspaceFile(\''+esc(m.path)+'\')">'+esc(m.path)+'</code></span></div>');break;
   case 'agentStart':hideW();todoEl=null;document.getElementById('statusbar').classList.add('show');setBusy(true);showWork();startThinking();break;
   case 'agentStatus':
@@ -1364,6 +1378,7 @@ window.addEventListener('message',e=>{const m=e.data;switch(m.command){
     finishThinking(m.text);
     break;
   case 'agentTaskList':renderTodos(m.tasks||[]);break;
+  case 'closeBubble':aiC=null;activeThinkingRow=null;break;
   case 'agentProse':
     if(activeThinkingStart){finishThinking();}
     if(!aiC){aiC=addItem('ai','<div class="ai-c"></div>','Flash Code').querySelector('.ai-c');}
@@ -1382,12 +1397,12 @@ window.addEventListener('message',e=>{const m=e.data;switch(m.command){
     break;
   case 'agentAskCommand':
     clearActiveThinking();
-    addItem('ai',buildCommandPermission(m.cmdId, m.cmd),'Flash Code');
+    addItem('ai',buildCommandPermission(m.cmdId, m.cmd, m.threadLabel),'Flash Code');
     scrollDown();
     break;
   case 'agentAskCode':
     clearActiveThinking();
-    addItem('ai',buildCodePermission(m.cmdId, m.lang, m.code),'Flash Code');
+    addItem('ai',buildCodePermission(m.cmdId, m.lang, m.code, m.threadLabel),'Flash Code');
     scrollDown();
     break;
   case 'agentSpawn':spawnAgentCard(m.id, m.role, m.task);break;

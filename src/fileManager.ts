@@ -49,6 +49,21 @@ export async function getProjectTree(maxFiles = 200, force = false): Promise<str
     return out;
 }
 
+/** Read a couple of orienting files (README, package.json) so the agent has
+ * project context up front and doesn't flail with list_files. Bounded. */
+export async function getKeyFiles(): Promise<string> {
+    const ws = vscode.workspace.workspaceFolders?.[0]?.uri;
+    if (!ws) return '';
+    const out: string[] = [];
+    for (const name of ['README.md', 'package.json']) {
+        try {
+            const data = Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(ws, name))).toString('utf-8');
+            out.push(`=== ${name} ===\n${data.slice(0, 1800)}`);
+        } catch { /* not present */ }
+    }
+    return out.join('\n\n');
+}
+
 /** Full, uncapped list of workspace-relative file paths (for search & pickers). */
 export async function getAllFiles(): Promise<string[]> {
     const uris = await vscode.workspace.findFiles('**/*', EXCLUDE_GLOB);

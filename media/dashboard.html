@@ -143,6 +143,7 @@
         const vscode = acquireVsCodeApi();
 
         const columns = ['Analyzing', 'Planning', 'Executing', 'Awaiting_Approval', 'Completed'];
+        const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
         function render(agents) {
             document.getElementById('tot-count').innerText = agents.length;
@@ -165,10 +166,10 @@
                 } else {
                     cardsEl.innerHTML = arr.map(a => `
                         <div class="card">
-                            <div class="card-role">${a.role}</div>
-                            <div class="card-obj">${a.objective}</div>
-                            <div class="card-prog">${a.progress}</div>
-                            ${a.status === 'Awaiting_Approval' ? `<button onclick="approveTask('${a.id}')" style="margin-top:10px; width:100%; background:var(--accent); color:white; border:none; padding:5px; border-radius:3px; cursor:pointer;">Approve & Merge</button>` : ''}
+                            <div class="card-role">${esc(a.role)}</div>
+                            <div class="card-obj">${esc(a.objective)}</div>
+                            <div class="card-prog">${esc(a.progress)}</div>
+                            ${a.status === 'Awaiting_Approval' ? `<button onclick="approveTask('${esc(a.id)}')" style="margin-top:10px; width:100%; background:var(--accent); color:white; border:none; padding:5px; border-radius:3px; cursor:pointer;">Approve & Merge</button>` : ''}
                         </div>
                     `).join('');
                 }

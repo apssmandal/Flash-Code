@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flash Code — Developer Guide v2.3.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#161b22; --bg3:#1c2128; --fg:#c9d1d9; --dim:#8b949e;
+    --border:#30363d; --accent:#4ea1ff; --accent2:#a371f7; --green:#3fb950; --red:#f85149; --yellow:#d29922;
+    --mono:'JetBrains Mono',Consolas,monospace; --shadow:0 8px 30px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--fg);font-size:15px;line-height:1.7}
+  h1,h2,h3,h4{font-family:'Outfit',sans-serif;font-weight:700;line-height:1.25;scroll-margin-top:24px}
+  h1{font-size:2.2rem;margin:.2em 0} h2{font-size:1.7rem;margin:2.2em 0 .6em;padding-bottom:.3em;border-bottom:2px solid var(--border)}
+  h3{font-size:1.25rem;margin:1.6em 0 .5em;color:#fff} h4{font-size:1.02rem;margin:1.2em 0 .4em;color:var(--accent)}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  code{font-family:var(--mono);font-size:.86em;background:rgba(110,118,129,.18);padding:.12em .4em;border-radius:5px;border:1px solid rgba(110,118,129,.12)}
+  pre code{background:none;border:none;padding:0}
+  pre{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;overflow:auto;box-shadow:var(--shadow);font-size:.85rem}
+  .layout{display:grid;grid-template-columns:300px 1fr;max-width:1500px;margin:0 auto}
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:24px 16px;border-right:1px solid var(--border);background:var(--bg2)}
+  nav.toc .brand{display:flex;align-items:center;gap:8px;font-family:'Outfit';font-weight:800;font-size:1.25rem;color:#fff;margin-bottom:4px}
+  nav.toc .brand .bolt{color:var(--accent)}
+  nav.toc .ver{color:var(--dim);font-size:.8rem;margin-bottom:18px}
+  nav.toc a{display:block;color:var(--dim);padding:5px 10px;border-radius:7px;font-size:.86rem;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--fg);background:rgba(110,118,129,.1);text-decoration:none}
+  nav.toc a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(78,161,255,.08);font-weight:600}
+  nav.toc .grp{margin-top:14px;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);font-weight:700;padding:0 10px}
+  main{padding:40px 56px;min-width:0;max-width:1100px}
+  .cover{text-align:center;padding:48px 24px 36px;border:1px solid var(--border);border-radius:18px;background:radial-gradient(1200px 400px at 50% -10%,rgba(78,161,255,.14),transparent),var(--bg2);box-shadow:var(--shadow);margin-bottom:24px}
+  .cover .logo{font-size:64px;color:var(--accent);line-height:1}
+  .cover h1{font-size:2.8rem;margin:.2em 0;background:linear-gradient(90deg,#fff,var(--accent));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .cover .sub{color:var(--dim);font-size:1.05rem;max-width:640px;margin:0 auto}
+  .badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+  .badge{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:.8rem;color:var(--dim)}
+  .badge b{color:var(--accent)}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin:20px 0}
+  .stat{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;box-shadow:var(--shadow)}
+  .stat .n{font-family:'Outfit';font-size:2rem;font-weight:800;color:var(--accent)} .stat .l{color:var(--dim);font-size:.82rem}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:16px 0;box-shadow:var(--shadow)}
+  .note{border-left:4px solid var(--accent);background:rgba(78,161,255,.06);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+  .warn{border-left:4px solid var(--yellow);background:rgba(210,153,34,.07);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.88rem;background:var(--bg2);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--bg3);color:#fff;font-family:'Outfit';font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none} td code{white-space:nowrap}
+  .diagram{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;margin:18px 0;box-shadow:var(--shadow);overflow:auto}
+  .diagram .cap{color:var(--dim);font-size:.82rem;text-align:center;margin-top:10px}
+  .pre-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .chart-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:var(--shadow)}
+  .chart-box h4{margin-top:0}
+  .pill{display:inline-block;font-size:.72rem;padding:1px 8px;border-radius:10px;border:1px solid var(--border);color:var(--dim)}
+  .pill.yes{color:var(--green);border-color:rgba(63,185,80,.4)} .pill.no{color:var(--red);border-color:rgba(248,81,73,.4)}
+  .fileref{font-family:var(--mono);font-size:.82rem;color:var(--accent2)}
+  .toolbar{position:fixed;top:14px;right:18px;z-index:50;display:flex;gap:8px}
+  .toolbar button{background:var(--bg3);border:1px solid var(--border);color:var(--fg);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:.8rem}
+  .toolbar button:hover{border-color:var(--accent);color:var(--accent)}
+  footer{margin:48px 0 24px;padding-top:18px;border-top:1px solid var(--border);color:var(--dim);font-size:.85rem;text-align:center}
+  @media print{
+    nav.toc,.toolbar{display:none} .layout{grid-template-columns:1fr;max-width:none} main{padding:0}
+    body{background:#fff;color:#111;font-size:11pt} pre,.card,table,.diagram,.chart-box,.stat{box-shadow:none}
+    h2{page-break-after:avoid} .diagram,table,pre{page-break-inside:avoid} .cover{page-break-after:always}
+    a{color:#0645ad}
+  }
+  @media(max-width:900px){.layout{grid-template-columns:1fr}nav.toc{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border)}main{padding:24px}.pre-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="toolbar"><button onclick="window.print()">🖨 Print / PDF</button><button onclick="document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()">⛶ Fullscreen</button></div>
+<div class="layout">
+<nav class="toc">
+  <div class="brand"><span class="bolt">⚡</span> Flash Code</div>
+  <div class="ver">Developer Guide · v2.3.0</div>
+  <div class="grp">Orientation</div>
+  <a href="#intro">1. Introduction</a>
+  <a href="#bigpicture">2. The Big Picture</a>
+  <a href="#metrics">3. Codebase at a Glance</a>
+  <a href="#repo">4. Repository Map</a>
+  <div class="grp">How it works</div>
+  <a href="#lifecycle">5. Request Lifecycle</a>
+  <a href="#triage">6. Triage &amp; Routing</a>
+  <a href="#loop">7. The Agent Loop</a>
+  <a href="#completion">8. The Completion Gate</a>
+  <a href="#toolcalling">9. Tool Calling</a>
+  <a href="#tools">10. Tool Catalog</a>
+  <a href="#providers">11. Providers &amp; Rotation</a>
+  <a href="#prompts">12. The Prompt System</a>
+  <a href="#subagents">13. Subagents &amp; Mission Control</a>
+  <a href="#session">14. Sessions &amp; Storage</a>
+  <a href="#webview">15. Webview &amp; Protocol</a>
+  <a href="#security">16. Security Model</a>
+  <a href="#diff">17. Diff &amp; Edit Engine</a>
+  <a href="#build">18. Build, Test &amp; CI</a>
+  <a href="#timeline">19. Evolution Timeline</a>
+  <div class="grp">Reference</div>
+  <a href="#filebyfile">20. File-by-File Reference</a>
+  <a href="#extending">21. Extending Flash Code</a>
+  <a href="#troubleshooting">22. Troubleshooting</a>
+  <a href="#glossary">23. Glossary</a>
+  <a href="#appendix">24. Appendix</a>
+</nav>
+<main>
+
+<header class="cover">
+  <div class="logo">⚡</div>
+  <h1>Flash Code Developer Guide</h1>
+  <div class="sub">A complete architectural reference for the multi-provider, agentic VS Code coding assistant — from the 10,000-foot view down to every function and how the pieces fit together.</div>
+  <div class="badges">
+    <span class="badge">Version <b>2.3.0</b></span>
+    <span class="badge"><b>8</b> providers</span>
+    <span class="badge"><b>11</b> subagents</span>
+    <span class="badge"><b>~3,400</b> LOC engine</span>
+    <span class="badge"><b>79</b> tests</span>
+    <span class="badge">License <b>MIT</b></span>
+  </div>
+</header>
+
+<div class="note">📊 <b>Rendering note:</b> the diagrams (Mermaid) and charts (Chart.js) load from a CDN, so view this with an internet connection for the full experience. All content is also fully readable as prose + tables without scripts. Use <b>🖨 Print / PDF</b> (top-right) to export a paginated 30+ page document.</div>
+
+<!-- ===================== 1 ===================== -->
+<h2 id="intro">1. Introduction</h2>
+<p>Flash Code is a <b>VS Code extension</b> that turns a chat message into real work: it understands intent, reads your codebase, edits files (with reviewable diffs), runs commands (with approval), delegates to specialized subagents, and keeps going until the objective is genuinely complete. It talks to eight AI providers through one pluggable engine and survives Google Gemini's free tier with multi-key round-robin rotation.</p>
+<p>This guide is written for <b>contributors</b>. It assumes you can read TypeScript and know the basics of the VS Code extension API. Three design commitments shape everything:</p>
+<div class="card">
+  <h4>① Host-agnostic engine</h4>
+  <p>Everything under <code>src/core/</code> and <code>src/providers/</code> is forbidden from importing <code>vscode</code>. Host capabilities (filesystem, shell, UI) are injected through the <code>ToolContext</code> interface. This is what makes the engine unit-testable with fakes and conceptually portable.</p>
+  <h4>② One source of truth per concern</h4>
+  <p>Tools are declared once and projected to <i>both</i> native function-calling and XML fallback. Providers map to/from one canonical <code>StreamEvent</code> stream. Prompts assemble from composable constants. No duplicated, drift-prone definitions.</p>
+  <h4>③ Preserve the original UI</h4>
+  <p>The webview is the original hand-authored Flash Code UI (vanilla HTML/JS). The new engine drives it through a host adapter rather than replacing it — the look and feel is intentional and protected.</p>
+</div>
+
+<!-- ===================== 2 ===================== -->
+<h2 id="bigpicture">2. The Big Picture</h2>
+<p>Flash Code is three concentric layers. Messages flow down from the webview to the engine; events flow back up. The host layer is the only place that touches both <code>vscode</code> and the engine.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph WV["🖥️ WEBVIEW — media/*.html (vanilla JS, sandboxed)"]
+    chat["chat.html<br/>timeline · composer · diff cards"]
+    side["sidebar.html<br/>sessions · settings"]
+    dash["dashboard.html<br/>Mission Control kanban"]
+  end
+  subgraph HOST["🧩 HOST — src/host/* + extension.ts (Node + vscode)"]
+    cc["ChatController<br/>orchestrator + event adapter"]
+    sp["SidebarProvider"]
+    dc["DashboardController"]
+    htc["HostToolContext<br/>fs · child_process"]
+  end
+  subgraph ENGINE["⚙️ ENGINE — src/core, src/providers, src/prompts (no vscode)"]
+    tri["triage<br/>classifyIntent"]
+    loop["AgentLoop"]
+    adp["ToolCallingAdapter"]
+    reg["ToolRegistry + tools"]
+    prov["Provider + KeyPool"]
+  end
+  chat -- "sendMessage" --> cc
+  side -- "settings / sessions" --> sp
+  cc -- "AgentEvents → messages" --> chat
+  cc --> tri --> loop
+  loop --> adp --> prov
+  loop --> reg
+  reg -. "ToolContext" .-> htc
+  cc -. "agentHub" .-> dc --> dash
+  prov -- "StreamEvent" --> adp
+</pre>
+<div class="cap">Figure 2.1 — The three layers and the direction of control.</div>
+</div>
+<table>
+<tr><th>Layer</th><th>Lives in</th><th>Responsibility</th><th>May import vscode?</th></tr>
+<tr><td><b>Webview</b></td><td><code>media/*.html</code></td><td>Render the UI, capture user intent, post commands</td><td>n/a (sandbox)</td></tr>
+<tr><td><b>Host</b></td><td><code>src/host/*</code>, <code>src/extension.ts</code></td><td>Bridge webview ⇄ engine; provide fs/shell/UI capabilities; manage panels &amp; sessions</td><td><span class="pill yes">yes</span></td></tr>
+<tr><td><b>Engine</b></td><td><code>src/core</code>, <code>src/providers</code>, <code>src/prompts</code></td><td>Classify, plan, call tools, stream from providers, rotate keys</td><td><span class="pill no">never</span></td></tr>
+</table>
+
+<!-- ===================== 3 ===================== -->
+<h2 id="metrics">3. Codebase at a Glance</h2>
+<div class="stat-grid">
+  <div class="stat"><div class="n">40</div><div class="l">TypeScript source files</div></div>
+  <div class="stat"><div class="n">~3,400</div><div class="l">engine + host LOC</div></div>
+  <div class="stat"><div class="n">8</div><div class="l">AI providers</div></div>
+  <div class="stat"><div class="n">~28</div><div class="l">agent tools</div></div>
+  <div class="stat"><div class="n">11</div><div class="l">specialized subagents</div></div>
+  <div class="stat"><div class="n">79</div><div class="l">tests (16 files)</div></div>
+</div>
+<div class="pre-grid">
+  <div class="chart-box"><h4>Lines of code by area</h4><canvas id="locChart" height="240"></canvas></div>
+  <div class="chart-box"><h4>Composition</h4><canvas id="compChart" height="240"></canvas></div>
+</div>
+
+<!-- ===================== 4 ===================== -->
+<h2 id="repo">4. Repository Map</h2>
+<pre><code class="language-text">Flash Code/
+├─ src/
+│  ├─ extension.ts            activation, commands, wiring
+│  ├─ core/                   the provider-agnostic engine
+│  │  ├─ agentLoop.ts         the tool-use loop + completion gate
+│  │  ├─ toolCallingAdapter.ts native ↔ XML normalization
+│  │  ├─ toolRegistry.ts      tool definitions → schemas/XML
+│  │  ├─ tools/               fileTools, execTools, util, index
+│  │  ├─ xmlToolParser.ts     XML fallback parser
+│  │  ├─ triage.ts            intent classifier
+│  │  ├─ commandClass.ts      command categorizer (allow-for-thread)
+│  │  ├─ usage.ts             pure token-accounting model
+│  │  ├─ events.ts            AgentEvent union (engine→host)
+│  │  ├─ toolContext.ts       host-capability interface
+│  │  ├─ errors.ts            typed error hierarchy
+│  │  └─ logger.ts            leveled, secret-redacting logger
+│  ├─ providers/              types, registry, keyPool, http, metered, 4 impls
+│  ├─ prompts/                system, triage, subagents
+│  ├─ host/                   chatController, sidebar, dashboard, usageTracker, hostToolContext, webviewHtml, agentHub
+│  ├─ session/                sessionManager, types, sessionEvents
+│  ├─ diffUtils.ts editUtils.ts fileManager.ts rulesEngine.ts secrets.ts storage.ts
+├─ media/                     chat.html · sidebar.html · dashboard.html (the UI)
+├─ test/                      vitest specs + mocks/vscode.ts
+├─ docs/                      this guide (+ DEVELOPER_GUIDE.md quick ref)
+├─ build.mjs                  esbuild host bundler
+└─ package.json               manifest, scripts, config schema</code></pre>
+
+<!-- ===================== 5 ===================== -->
+<h2 id="lifecycle">5. Request Lifecycle</h2>
+<p>The single most important flow to understand: what happens when you type a message and hit send.</p>
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  actor U as User
+  participant W as chat.html
+  participant C as ChatController
+  participant T as triage.classifyIntent
+  participant L as AgentLoop
+  participant A as ToolCallingAdapter
+  participant P as Provider + KeyPool
+  participant X as ToolContext (host)
+  U->>W: type message, Enter
+  W->>C: sendMessage{text, attachments}
+  Note over C: busy? → queue. else record turn + save()<br/>(session appears in sidebar now)
+  C->>T: classifyIntent(text, recent)
+  T->>P: 1 cheap call (TRIAGE_PROMPT)
+  P-->>T: "general | codebase | agentic"
+  alt general
+    C->>P: answerDirect (no tools)
+    P-->>C: streamed reply
+  else codebase / agentic
+    loop until done / cap
+      C->>L: run(text, history)
+      L->>A: runTurn(request)
+      A->>P: stream(UnifiedRequest)
+      P-->>A: StreamEvents (text / tool_call / finish)
+      A-->>L: {text, toolCalls, finish}
+      L->>X: execute each tool
+      X-->>L: tool results
+      L-->>C: AgentEvents (prose, tool_start, diff, …)
+      C-->>W: startResponse / streamChunk / showDiff / …
+    end
+    Note over L: before stopping → completion gate
+  end
+  C->>W: agentDone
+</pre>
+<div class="cap">Figure 5.1 — End-to-end request lifecycle (one user message).</div>
+</div>
+<h3>Step by step</h3>
+<table>
+<tr><th>#</th><th>Where</th><th>What happens</th></tr>
+<tr><td>1</td><td><code class="fileref">chat.html → ChatController.onMessage</code></td><td>Webview posts <code>sendMessage</code>. If the agent is busy, the message is <b>queued</b> and a notice shown; otherwise the run begins.</td></tr>
+<tr><td>2</td><td><code class="fileref">SessionManager.addUser + save</code></td><td>The user turn is recorded and the session is <b>indexed immediately</b> — it appears in the sidebar, titled from this message, before the AI even responds.</td></tr>
+<tr><td>3</td><td><code class="fileref">triage.classifyIntent</code></td><td>One cheap, 8-second-bounded provider call returns <code>general</code>, <code>codebase</code>, or <code>agentic</code> (defaulting to <code>agentic</code> on failure).</td></tr>
+<tr><td>4</td><td><code class="fileref">ChatController.answerDirect / AgentLoop</code></td><td><b>general</b> → a single streamed reply with no tools. <b>codebase</b> → AgentLoop with read-only tools, 12-iteration cap. <b>agentic</b> → AgentLoop with all tools, 40-iteration cap. Both inject project tree + key files + rules + rolling summary.</td></tr>
+<tr><td>5</td><td><code class="fileref">AgentLoop.run</code></td><td>Streams turns, executes tools through <code>ToolContext</code>, feeds results back, and applies the completion gate + stall/iteration guards.</td></tr>
+<tr><td>6</td><td><code class="fileref">ChatController.emit</code></td><td>Each <code>AgentEvent</code> is translated to the webview's message vocabulary; the streaming-bubble lifecycle is managed here.</td></tr>
+</table>
+
+<!-- ===================== 6 ===================== -->
+<h2 id="triage">6. Triage &amp; Routing</h2>
+<p>Routing is what stops "how do circuit breakers work?" from crawling your files, and what sends "fix this bug" or "search the web for X" into the full tool loop. It is a single cheap classification call (<code class="fileref">core/triage.ts</code> + <code class="fileref">prompts/triage.ts</code>).</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  M["User message"] --> Q{"classifyIntent<br/>(1 cheap call, 8s timeout)"}
+  Q -->|"answerable from<br/>own knowledge"| G["general<br/>answerDirect · NO tools"]
+  Q -->|"about THIS project,<br/>read-only"| CB["codebase<br/>read-only tools · 12 iters"]
+  Q -->|"needs web/URL/live info,<br/>commands, edits, subagents"| AG["agentic<br/>all tools · 40 iters"]
+  Q -->|"call failed / unsure"| AG
+</pre>
+<div class="cap">Figure 6.1 — Intent routing decision tree.</div>
+</div>
+<table>
+<tr><th>Route</th><th>Tools</th><th>Iteration cap</th><th>Examples</th></tr>
+<tr><td><code>general</code></td><td>none (direct answer)</td><td>—</td><td>"what is a closure", "explain async/await"</td></tr>
+<tr><td><code>codebase</code></td><td><code>READ_ONLY_TOOLS</code></td><td>12</td><td>"explain this codebase", "where is X handled?"</td></tr>
+<tr><td><code>agentic</code></td><td>all tools</td><td>40</td><td>"build a todo app", "search the web for…", "use your WebScout agent"</td></tr>
+</table>
+<div class="note">The decisive rule baked into <code>TRIAGE_PROMPT</code>: <i>if answering needs the web, a URL, live info, a subagent, or any tool/action → agentic; only choose general if it's answerable from the model's own knowledge.</i></div>
+
+<!-- ===================== 7 ===================== -->
+<h2 id="loop">7. The Agent Loop</h2>
+<p><code class="fileref">core/agentLoop.ts</code> is the heart of the engine. It is provider-agnostic: native tool-use and the XML fallback both reduce to the same <code>{ text, thinking, toolCalls, finish }</code> shape via the adapter.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  S(["run(userText, history)"]) --> I{"iter &lt; maxIterations?"}
+  I -->|no| DONE(["emit done · return finalProse"])
+  I -->|yes| TURN["adapter.runTurn → stream a turn"]
+  TURN --> TRUNC{"truncated XML tag?"}
+  TRUNC -->|yes| NUDGE1["ask to continue"] --> I
+  TRUNC -->|no| HASTOOLS{"tool calls?"}
+  HASTOOLS -->|no| GATE{"completion gate:<br/>isComplete()?"}
+  GATE -->|"DONE or cap"| DONE
+  GATE -->|"CONTINUE"| NUDGE2["push 'keep working'"] --> I
+  HASTOOLS -->|yes| EXEC["executeTools()<br/>planGate · dedup · spawn-block"]
+  EXEC --> PROG{"made progress?"}
+  PROG -->|yes| I
+  PROG -->|"no (dup calls)"| STALL{"stall++"}
+  STALL -->|"1st"| NUDGE3["'stop repeating, answer now'"] --> I
+  STALL -->|"2nd"| FORCE["force final answer (no tools)"] --> DONE
+</pre>
+<div class="cap">Figure 7.1 — The agent loop with its three independent termination guards.</div>
+</div>
+<h3>The three guards against infinite loops</h3>
+<table>
+<tr><th>Guard</th><th>Mechanism</th><th>Bound</th></tr>
+<tr><td><b>Iteration cap</b></td><td><code>maxIterations</code></td><td>12 (codebase) / 40 (agentic)</td></tr>
+<tr><td><b>Stall / dedup</b></td><td>A <code>seen</code> set of read-only call signatures; a turn that only repeats prior calls "makes no progress" → one nudge, then a forced final answer.</td><td>2 stalls</td></tr>
+<tr><td><b>Completion cap</b></td><td>The completion gate may push "keep going" only N times.</td><td>3 continuations</td></tr>
+</table>
+<h3>executeTools</h3>
+<p>For each requested call: resolve the <code>ToolDef</code>; enforce the <b>plan-mode mutation ban</b> (<code>planGate</code>) and the <b>spawn-blocking rule</b> (after a <code>spawn_agent</code>, other tools that turn are ignored); run the handler; emit <code>tool_start</code>/<code>tool_result</code> (output cleaned by <code>toolPreview</code>, which strips the <code>[tool args]</code> label so the card shows real output); feed results back as native <code>tool</code> messages or an XML <code>[tool results]</code> block.</p>
+
+<!-- ===================== 8 ===================== -->
+<h2 id="completion">8. The Completion Gate</h2>
+<p>The agent used to stop the instant a turn had no tool call — even when the prose was a mere intention ("let me check package.json…"). The completion gate fixes that.</p>
+<div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Working
+  Working --> WantsToStop: turn has no tool calls
+  WantsToStop --> Judge: continuations &lt; 3 ?
+  WantsToStop --> Stop: continuations exhausted
+  Judge --> Stop: COMPLETION_JUDGE = DONE
+  Judge --> Working: = CONTINUE (push "keep working", ++)
+  Judge --> Stop: judge call failed (fail-safe)
+  Stop --> [*]
+</pre>
+<div class="cap">Figure 8.1 — Completion-gate state machine (enabled for codebase &amp; agentic routes).</div>
+</div>
+<p>The judge is one cheap call with <code>COMPLETION_JUDGE</code> (temperature 0, ~8 tokens) that reads the original request + the latest message and replies <code>DONE</code> or <code>CONTINUE</code>. It <b>defaults to DONE on any failure</b>, so it can never block or hang. Combined with the loop's other two guards, premature stops are eliminated <i>and</i> infinite loops are impossible.</p>
+
+<!-- ===================== 9 ===================== -->
+<h2 id="toolcalling">9. Tool Calling (Native ⇄ XML)</h2>
+<p>Providers differ: Claude/OpenAI/Gemini support native function calling; local models (Ollama) don't. <code class="fileref">core/toolCallingAdapter.ts</code> hides this difference so the loop is uniform.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  R["UnifiedRequest"] --> CAP{"provider.capabilities.tools?"}
+  CAP -->|true| N["NATIVE<br/>pass JSON tool schemas<br/>read structured tool_call events"]
+  CAP -->|false| Xm["FALLBACK<br/>inject XML tool block in system prompt<br/>parse tags from text (xmlToolParser)"]
+  N --> NORM["normalized: {text, thinking, toolCalls, finish}"]
+  Xm --> NORM
+  NORM --> LOOP["AgentLoop consumes one shape"]
+</pre>
+<div class="cap">Figure 9.1 — One agent loop, two transports.</div>
+</div>
+<p>Both transports are generated from the same <code>ToolRegistry</code>: <code>schemas()</code> emits native JSON-Schema tools; <code>xmlDefinitions()</code> emits the XML block. They cannot drift because there is one definition per tool.</p>
+
+<!-- ===================== 10 ===================== -->
+<h2 id="tools">10. Tool Catalog</h2>
+<p>All tools are declared in <code class="fileref">core/tools/fileTools.ts</code> and <code class="fileref">core/tools/execTools.ts</code> and registered by <code>buildDefaultRegistry()</code>. <code>mutates</code> tools require approval in <code>ask</code> mode; <code>category</code> drives the <code>READ_ONLY_TOOLS</code> allowlist for the codebase route.</p>
+<table>
+<tr><th>Tool</th><th>Category</th><th>Mutates</th><th>What it does</th></tr>
+<tr><td><code>read_file</code></td><td>read</td><td>—</td><td>Read a UTF-8 workspace file</td></tr>
+<tr><td><code>list_files</code></td><td>read</td><td>—</td><td>The project tree</td></tr>
+<tr><td><code>search_files</code></td><td>read</td><td>—</td><td>Regex search across files (≤50 hits)</td></tr>
+<tr><td><code>read_dir</code> / <code>get_file_info</code> / <code>read_json</code></td><td>read</td><td>—</td><td>Directory listing / stat / parsed JSON</td></tr>
+<tr><td><code>create</code> / <code>edit</code></td><td>write</td><td>✔</td><td>New file / SEARCH-REPLACE edit → diff card</td></tr>
+<tr><td><code>overwrite_file</code> / <code>append_file</code> / <code>format_json</code></td><td>write</td><td>✔</td><td>Whole-file write / append / pretty-print</td></tr>
+<tr><td><code>delete_file</code> / <code>rename_file</code> / <code>copy_file</code> / <code>create_dir</code></td><td>write</td><td>✔</td><td>File-system mutations (delete asks first)</td></tr>
+<tr><td><code>run_command</code> / <code>run_code</code> / <code>run_tests</code> / <code>npm_install</code></td><td>exec</td><td>✔</td><td>Shell / ad-hoc script / tests / install — <b>always asks</b></td></tr>
+<tr><td><code>git_status</code>/<code>git_diff</code>/<code>git_log</code>/<code>git_commit</code>/<code>create_branch</code></td><td>git</td><td>varies</td><td>Git via argv arrays (no shell injection)</td></tr>
+<tr><td><code>fetch_url</code> / <code>search_web</code></td><td>net</td><td>—</td><td>Fetch a URL / DuckDuckGo search</td></tr>
+<tr><td><code>ask_user</code></td><td>control</td><td>—</td><td>Interactive choice modal (structured schema)</td></tr>
+<tr><td><code>spawn_agent</code></td><td>control</td><td>✔</td><td>Delegate to a specialized subagent</td></tr>
+</table>
+
+<!-- ===================== 11 ===================== -->
+<h2 id="providers">11. Providers &amp; Key Rotation</h2>
+<p>A <code>Provider</code> maps its wire format to/from the canonical <code>UnifiedRequest</code>/<code>StreamEvent</code>. <code class="fileref">providers/registry.ts</code> builds each one from config + <code>SecretStore</code> and gives it a <code>KeyPool</code>.</p>
+<table>
+<tr><th>Provider</th><th>Native tools</th><th>Vision</th><th>Thinking</th><th>Key rotation</th></tr>
+<tr><td>Gemini</td><td><span class="pill yes">yes</span></td><td><span class="pill yes">yes</span></td><td><span class="pill no">no</span></td><td><b>multi-key</b></td></tr>
+<tr><td>Anthropic (Claude)</td><td><span class="pill yes">yes</span></td><td><span class="pill yes">yes</span></td><td><span class="pill yes">yes</span></td><td>single+</td></tr>
+<tr><td>OpenAI</td><td><span class="pill yes">yes</span></td><td><span class="pill yes">yes</span></td><td><span class="pill no">no</span></td><td>single+</td></tr>
+<tr><td>OpenRouter / Groq / DeepSeek / Nvidia</td><td><span class="pill yes">yes</span></td><td>varies</td><td><span class="pill no">no</span></td><td>single+</td></tr>
+<tr><td>Ollama (local)</td><td><span class="pill no">XML</span></td><td><span class="pill no">no</span></td><td><span class="pill no">no</span></td><td>n/a</td></tr>
+</table>
+<h3>KeyPool rotation</h3>
+<p>This is what keeps the Gemini free tier alive. <code class="fileref">providers/keyPool.ts</code> leases keys round-robin, balanced by in-flight count, paced under an RPM cap, and reroutes on failure.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  REQ["provider.stream()"] --> ACQ["acquire() — pick key:<br/>fewest in-flight, not cooling down, RPM ok"]
+  ACQ --> FETCH["safeFetch + stream"]
+  FETCH --> OK{"outcome?"}
+  OK -->|200 stream| EMIT["yield StreamEvents"]
+  OK -->|"429 RateLimitError"| COOL["cooldown this key → reroute"] --> ACQ
+  OK -->|"401/403 AuthError"| DIS["disable key 24h → reroute"] --> ACQ
+  OK -->|"5xx / network OverloadError"| BACK["backoff → retry (≤ maxAttempts)"] --> ACQ
+</pre>
+<div class="cap">Figure 11.1 — KeyPool.withRotation: free-tier survival &amp; resilience.</div>
+</div>
+<p><code class="fileref">providers/http.ts</code>'s <code>safeFetch</code> converts transient network failures (<code>fetch failed</code>, <code>ECONNRESET</code>, …) into a retryable <code>OverloadError</code>, so a blip reroutes instead of aborting the whole run. <code>classifyStatus</code> maps HTTP status → typed error.</p>
+
+<!-- ===================== 12 ===================== -->
+<h2 id="prompts">12. The Prompt System</h2>
+<p>Prompts are first-class. <code class="fileref">prompts/system.ts</code>'s <code>buildSystemPrompt()</code> composes the system message from constants and wraps all injected data in labeled delimiters.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  ID["IDENTITY"] --> SYS
+  OPS["OPERATING_RULES<br/>(incl. anti-fabrication)"] --> SYS
+  CLR["CLARITY<br/>(ask before deciding)"] --> SYS
+  MODE["MODE_DIRECTIVE<br/>ask/auto/plan/autonomous"] --> SYS
+  SAFE["SAFETY"] --> SYS
+  WEB["WEB_DESIGN_DIRECTIVE"] --> SYS
+  SYS["buildSystemPrompt()"] --> WRAP["+ &lt;project_structure&gt; &lt;project_rules&gt;<br/>&lt;conversation_summary&gt; &lt;key_files&gt;<br/>(delimited as DATA)"]
+</pre>
+<div class="cap">Figure 12.1 — System-prompt assembly. Injected content is delimited and treated as data, not instructions.</div>
+</div>
+<table>
+<tr><th>Prompt</th><th>Used by</th><th>Purpose</th></tr>
+<tr><td><code>buildSystemPrompt</code></td><td>codebase/agentic loop</td><td>The agent's system message</td></tr>
+<tr><td><code>CLARITY</code></td><td>system prompt</td><td>Mandatory <code>ask_user</code> before stack/architecture decisions</td></tr>
+<tr><td><code>OPERATING_RULES</code> rule 7</td><td>system prompt</td><td>Anti-fabrication: never claim a tool result without calling the tool</td></tr>
+<tr><td><code>TRIAGE_PROMPT</code></td><td>triage</td><td>One-word route classification</td></tr>
+<tr><td><code>COMPLETION_JUDGE</code></td><td>completion gate</td><td>DONE / CONTINUE verdict</td></tr>
+<tr><td><code>SUMMARIZE_PROMPT</code></td><td>compaction</td><td>Dense rolling summary of old turns</td></tr>
+<tr><td><code>CHAT_DIRECTIVE</code></td><td>general route</td><td>Answer directly, no tools</td></tr>
+</table>
+
+<!-- ===================== 13 ===================== -->
+<h2 id="subagents">13. Subagents &amp; Mission Control</h2>
+<p>Eleven specialized subagents (<code class="fileref">prompts/subagents.ts</code>) can be spawned by the main agent (<code>spawn_agent</code>) or by you (<code>/agent &lt;Role&gt; &lt;task&gt;</code>). Each runs a child <code>AgentLoop</code> with a restricted tool allowlist.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  ORCH["🧭 Orchestrator"] --> ARCH["🏗️ Architect"]
+  ORCH --> INSP["🔍 Inspector"]
+  ORCH --> WS["🌐 WebScout"]
+  ORCH --> DBG["🐞 Debugger"]
+  ORCH --> SEN["🛡️ Sentinel"]
+  ORCH --> TUN["⚡ Tuner"]
+  ORCH --> QA["🧪 QA"]
+  ORCH --> SCU["🪚 Sculptor"]
+  ORCH --> STY["🎨 Stylist"]
+  ORCH --> SCR["📝 Scribe"]
+</pre>
+<div class="cap">Figure 13.1 — The subagent fleet. Read-only roles (Inspector/Sentinel/Tuner/WebScout) cannot mutate files.</div>
+</div>
+<p>Spawn lifecycle events flow through <code>agentHub</code> to the Mission Control kanban:</p>
+<div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Executing: spawn
+  Executing --> Executing: progress (log)
+  Executing --> Completed: finish
+  Completed --> [*]
+</pre>
+<div class="cap">Figure 13.2 — Subagent state on the Mission Control board (Analyzing · Planning · Executing · Inbox · Completed columns).</div>
+</div>
+
+<!-- ===================== 14 ===================== -->
+<h2 id="session">14. Sessions &amp; Storage</h2>
+<p><code class="fileref">session/sessionManager.ts</code> holds the UI transcript (<code>ChatTurn[]</code>), the model-facing <code>ChatMessage[]</code>, a rolling summary, and per-turn file <b>snapshots</b> for rewind. Persistence is per-workspace via <code>globalState</code> keys (<code class="fileref">storage.ts</code>).</p>
+<table>
+<tr><th>Function</th><th>Role</th></tr>
+<tr><td><code>addUser/addAssistant</code></td><td>Append turns (UI + model)</td></tr>
+<tr><td><code>history()</code></td><td>Capped model history for the next request</td></tr>
+<tr><td><code>snapshot/rewind</code></td><td>Record old file contents; restore + truncate on rewind</td></tr>
+<tr><td><code>save/indexSession</code></td><td>Persist + add to the sidebar list (fires <code>sessionEvents</code>)</td></tr>
+<tr><td><code>listSessions/renameSession/deleteSession</code></td><td>Sidebar session management</td></tr>
+</table>
+<div class="note"><code>sessionEvents</code> is a cross-webview <code>EventEmitter</code> so the sidebar list refreshes the moment the chat panel saves — that's why a new session appears immediately, titled from your first message.</div>
+
+<!-- ===================== 15 ===================== -->
+<h2 id="webview">15. Webview &amp; Host Protocol</h2>
+<p>The webviews are vanilla HTML; the host translates between engine <code>AgentEvent</code>s and the webview's message vocabulary. Key host→webview messages:</p>
+<table>
+<tr><th>Host → Webview</th><th>Effect</th></tr>
+<tr><td><code>startResponse</code> / <code>streamChunk</code> / <code>closeBubble</code></td><td>Open / fill / close the streaming assistant bubble</td></tr>
+<tr><td><code>agentToolCall</code> / <code>agentToolResult</code></td><td>Tool card + its result (real output)</td></tr>
+<tr><td><code>showDiff</code></td><td>Red/green diff card (Yes / No / Tell instead…)</td></tr>
+<tr><td><code>agentAskUser</code> / <code>agentAskCommand</code> / <code>agentAskCode</code></td><td>Clarification modal / command &amp; code approval</td></tr>
+<tr><td><code>agentSpawn</code> / <code>agentProgress</code> / <code>agentFinish</code></td><td>Subagent card lifecycle</td></tr>
+<tr><td><code>agentTaskList</code> · <code>agentDone</code> · <code>agentError</code></td><td>Todo list · finalize · error card</td></tr>
+</table>
+<table>
+<tr><th>Webview → Host</th><th>Meaning</th></tr>
+<tr><td><code>sendMessage</code> · <code>cancel</code> · <code>newChat</code></td><td>Run / stop / reset</td></tr>
+<tr><td><code>setMode</code> · <code>setEffort</code> · <code>slashCommand</code></td><td>Controls &amp; slash palette</td></tr>
+<tr><td><code>acceptDiff</code> · <code>rejectDiff</code> · <code>tellClaude</code></td><td>Diff decisions (resolve a host promise)</td></tr>
+<tr><td><code>agentAcceptCommand</code> · <code>agentUserInput</code></td><td>Approve a command · answer a question</td></tr>
+<tr><td><code>getSettings</code> · <code>saveSettings</code> · <code>selectProvider</code></td><td>Sidebar settings (sidebar.html)</td></tr>
+</table>
+
+<!-- ===================== 16 ===================== -->
+<h2 id="security">16. Security Model</h2>
+<table>
+<tr><th>Concern</th><th>Defense</th></tr>
+<tr><td>API keys</td><td>VS Code <b>Secret Storage</b> (never settings.json); legacy plaintext migrated then cleared</td></tr>
+<tr><td>Command injection</td><td>git/exec via <code>runExec</code> = argv array + <code>shell:false</code>; only the explicit, approved <code>run_command</code> uses a shell</td></tr>
+<tr><td>Approvals</td><td>Commands/scripts <b>always prompt</b> (any mode) unless <code>autoApprove</code></td></tr>
+<tr><td>Path traversal</td><td><code>safeRelPath</code> rejects absolute paths, drive letters, <code>..</code></td></tr>
+<tr><td>Prompt injection</td><td>Injected file/web/rules content is delimited and treated as <b>data, not instructions</b>; role-lock guardrails</td></tr>
+<tr><td>Hallucination</td><td>Anti-fabrication rule: cannot claim a tool result without calling the tool; URL/web answers must use <code>search_web</code>/<code>fetch_url</code></td></tr>
+<tr><td>Secrets in logs</td><td><code>logger.redact()</code> masks key-shaped strings</td></tr>
+</table>
+
+<!-- ===================== 17 ===================== -->
+<h2 id="diff">17. Diff &amp; Edit Engine</h2>
+<p><code class="fileref">editUtils.ts</code> parses model output (<code>&lt;create&gt;</code>, <code>&lt;edit&gt;</code> SEARCH/REPLACE, fenced fallbacks) and applies it with exact-then-whitespace-tolerant matching. <code class="fileref">diffUtils.ts</code>'s <code>computeSideBySide</code> produces the red/green rows the chat renders.</p>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  M["model: edit tool<br/>SEARCH/REPLACE"] --> AP["editUtils.applyEdits<br/>(exact → whitespace-tolerant)"]
+  AP --> CMP["diffUtils.computeSideBySide"]
+  CMP --> PD["ChatController.presentDiff"]
+  PD --> ASK{"mode = ask?"}
+  ASK -->|yes| CARD["showDiff → await Accept/Reject"]
+  ASK -->|no| WRITE["snapshot + write + showDiff(applied)"]
+  CARD -->|accept| WRITE
+</pre>
+<div class="cap">Figure 17.1 — From model edit to written file with reviewable diff.</div>
+</div>
+
+<!-- ===================== 18 ===================== -->
+<h2 id="build">18. Build, Test &amp; CI</h2>
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  SRC["src/*.ts"] --> ESB["esbuild (build.mjs)"] --> OUT["out/extension.js"]
+  SRC --> TSC["tsc --noEmit"] --> TYPES["type check"]
+  SRC --> ESL["eslint"] --> LINT["lint"]
+  TEST["test/*.ts"] --> VIT["vitest (+ vscode mock)"] --> GREEN["96 tests"]
+  OUT & TYPES & LINT & GREEN --> CI["GitHub Actions ci.yml"] --> VSIX["vsce package → .vsix"]
+</pre>
+<div class="cap">Figure 18.1 — The build &amp; quality pipeline.</div>
+</div>
+<div class="pre-grid">
+  <div class="chart-box"><h4>Test files by area</h4><canvas id="testChart" height="220"></canvas></div>
+  <div class="card" style="margin:0">
+    <h4>Commands</h4>
+    <pre><code class="language-bash">npm run build       # esbuild host bundle
+npm run watch       # rebuild on change (F5 to launch)
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint
+npm test            # vitest (96 tests)
+npm run coverage    # core-logic coverage
+npm run package     # → flash-code-2.3.0.vsix</code></pre>
+  </div>
+</div>
+
+<!-- ===================== 19 ===================== -->
+<h2 id="timeline">19. Evolution Timeline</h2>
+<div class="diagram">
+<pre class="mermaid">
+timeline
+  title Flash Code rebuild journey
+  Foundation : esbuild + Vitest scaffold : Provider abstraction & KeyPool
+  Engine : Agent loop (native + XML) : Typed tools & registry : 11 subagent profiles
+  UI restore : Original chat/sidebar/dashboard reused : Host protocol adapter
+  Behavior : Triage routing : Completion gate : Anti-fabrication & approvals
+  Polish : Custom models : Message queue : Diff &amp; session fixes : Docs (this guide)
+</pre>
+<div class="cap">Figure 19.1 — How the project arrived at v2.3.0.</div>
+</div>
+
+<!-- ===================== 20 ===================== -->
+<h2 id="filebyfile">20. File-by-File Reference</h2>
+
+<h3>Entry &amp; host</h3>
+<table>
+<tr><th>File</th><th>Key exports / functions</th><th>Notes &amp; relationships</th></tr>
+<tr><td><code class="fileref">extension.ts</code></td><td><code>activate</code>, <code>deactivate</code>, command handlers</td><td>Configures logger; runs secret migration; builds <code>ProviderRegistry</code> + <code>SidebarProvider</code>; registers commands.</td></tr>
+<tr><td><code class="fileref">host/chatController.ts</code></td><td><code>show</code>, <code>onMessage</code>, <code>handleSend</code>, <code>answerDirect</code>, <code>handleSpawn</code>, <code>emit</code>, <code>plane</code>, <code>presentDiff</code>, <code>askApproval</code>, <code>askUser</code>, <code>spawn</code>, <code>maybeCompact</code>, <code>drainQueue</code></td><td>The orchestrator + the AgentEvent→webview adapter. Touches almost everything: AgentLoop, HostToolContext, registry, secrets, session, triage, prompts, dashboard.</td></tr>
+<tr><td><code class="fileref">host/sidebarProvider.ts</code></td><td><code>resolveWebviewView</code>, <code>onMessage</code>, <code>sendSettings</code>, <code>saveSettings</code></td><td>Sessions + multi-provider settings (incl. custom models). Subscribes to <code>sessionEvents</code>.</td></tr>
+<tr><td><code class="fileref">host/dashboardController.ts</code></td><td><code>show</code>, static <code>record</code>, <code>update</code></td><td>Mission Control. Static state map fed by <code>agentHub</code> events.</td></tr>
+<tr><td><code class="fileref">host/hostToolContext.ts</code></td><td><code>HostToolContext</code> implements <code>ToolContext</code>; <code>HostToolPlane</code></td><td>fs via <code>vscode.workspace.fs</code>; <code>runExec</code> = spawn argv; UI methods delegate to the plane.</td></tr>
+<tr><td><code class="fileref">host/webviewHtml.ts</code></td><td><code>buildWebviewHtml</code></td><td>Reads raw <code>media/*.html</code>.</td></tr>
+<tr><td><code class="fileref">host/agentHub.ts</code></td><td><code>agentHub</code></td><td>Cross-webview event bus for subagent lifecycle.</td></tr>
+</table>
+
+<h3>Engine core</h3>
+<table>
+<tr><th>File</th><th>Key exports / functions</th><th>Notes</th></tr>
+<tr><td><code class="fileref">core/agentLoop.ts</code></td><td><code>AgentLoop.run</code>, <code>executeTools</code>, <code>isComplete</code>, <code>planGate</code></td><td>The loop + completion gate + guards. Uses adapter, registry, ToolContext.</td></tr>
+<tr><td><code class="fileref">core/toolCallingAdapter.ts</code></td><td><code>native</code>, <code>buildSystem</code>, <code>tools</code>, <code>runTurn</code></td><td>Normalizes native vs XML into one shape.</td></tr>
+<tr><td><code class="fileref">core/toolRegistry.ts</code></td><td><code>register/get/schemas/xmlDefinitions</code></td><td>One definition → both transports + allowlist filtering.</td></tr>
+<tr><td><code class="fileref">core/tools/fileTools.ts</code></td><td>15 file tools; <code>writeWhole</code>, <code>parseSearchReplace</code></td><td>Edits route through <code>ctx.presentDiff</code>; reuses <code>editUtils</code>.</td></tr>
+<tr><td><code class="fileref">core/tools/execTools.ts</code></td><td>exec/git/net/control tools; <code>git</code>, <code>summarizeDuckDuckGo</code></td><td>argv exec; <code>ask_user</code> structured schema; <code>spawn_agent</code>.</td></tr>
+<tr><td><code class="fileref">core/tools/util.ts</code></td><td><code>clip</code>, <code>reqStr/optStr</code>, <code>safeRelPath</code>, <code>safeRegex</code>, <code>globMatch</code></td><td>Arg validation + path/regex safety.</td></tr>
+<tr><td><code class="fileref">core/xmlToolParser.ts</code></td><td><code>parseXmlToolCalls</code>, <code>isTruncated</code></td><td>Pure XML fallback parser; ignores <code>&lt;think&gt;</code>.</td></tr>
+<tr><td><code class="fileref">core/triage.ts</code></td><td><code>classifyIntent</code>, <code>parseRoute</code></td><td>Cheap bounded classifier; agentic fallback.</td></tr>
+<tr><td><code class="fileref">core/events.ts</code></td><td><code>AgentEvent</code>, <code>AgentMode</code>, <code>TaskItem</code></td><td>Engine→host contract.</td></tr>
+<tr><td><code class="fileref">core/toolContext.ts</code></td><td><code>ToolContext</code>, <code>ToolHandler</code></td><td>Host-capability seam.</td></tr>
+<tr><td><code class="fileref">core/errors.ts</code></td><td>typed errors, <code>isAbort</code></td><td>Drive KeyPool retry decisions.</td></tr>
+<tr><td><code class="fileref">core/logger.ts</code></td><td><code>createLogger</code>, <code>redact</code></td><td>Leveled, secret-safe logging.</td></tr>
+</table>
+
+<h3>Providers</h3>
+<table>
+<tr><th>File</th><th>Key exports / functions</th><th>Notes</th></tr>
+<tr><td><code class="fileref">providers/types.ts</code></td><td><code>Provider</code>, <code>UnifiedRequest</code>, <code>StreamEvent</code>, <code>EFFORT</code></td><td>The canonical seam.</td></tr>
+<tr><td><code class="fileref">providers/registry.ts</code></td><td><code>getActive</code>, <code>activeModel</code>, <code>modelsFor</code>, <code>customModels</code>, <code>keyStatuses</code>, <code>rebuild</code></td><td>Wires providers from config + secrets; one KeyPool each.</td></tr>
+<tr><td><code class="fileref">providers/keyPool.ts</code></td><td><code>acquire</code>, <code>withRotation</code>, <code>getStatuses</code></td><td>Round-robin + cooldown + RPM + retry; injectable clock for tests.</td></tr>
+<tr><td><code class="fileref">providers/http.ts</code></td><td><code>safeFetch</code>, <code>classifyStatus</code>, <code>sseData</code></td><td>Network resilience + SSE reader.</td></tr>
+<tr><td><code class="fileref">providers/gemini.ts</code></td><td><code>GeminiProvider</code>, <code>toGeminiContents</code>, <code>toGeminiTools</code></td><td>Multi-key rotation; replays <code>thoughtSignature</code>.</td></tr>
+<tr><td><code class="fileref">providers/anthropic.ts</code></td><td><code>AnthropicProvider</code>, <code>toAnthropicMessages</code></td><td>Content-block messages; tool_use/tool_result; prompt caching.</td></tr>
+<tr><td><code class="fileref">providers/openaiCompatible.ts</code></td><td><code>OpenAICompatibleProvider</code>, <code>OpenAIStreamParser</code></td><td>Backs OpenAI/OpenRouter/Groq/DeepSeek/Nvidia; accumulates tool-call deltas.</td></tr>
+<tr><td><code class="fileref">providers/ollama.ts</code></td><td><code>OllamaProvider</code>, <code>isAvailable</code></td><td><code>tools:false</code> → XML fallback.</td></tr>
+</table>
+
+<h3>Prompts · Session · Utilities</h3>
+<table>
+<tr><th>File</th><th>Key exports</th><th>Notes</th></tr>
+<tr><td><code class="fileref">prompts/system.ts</code></td><td><code>buildSystemPrompt</code>, <code>CLARITY</code>, <code>SAFETY</code>, <code>COMPLETION_JUDGE</code>, <code>SUMMARIZE_PROMPT</code>, <code>delimit</code></td><td>Composable system prompt + judge/summary prompts.</td></tr>
+<tr><td><code class="fileref">prompts/triage.ts</code></td><td><code>TRIAGE_PROMPT</code>, <code>triageUserMessage</code></td><td>Classifier prompt.</td></tr>
+<tr><td><code class="fileref">prompts/subagents.ts</code></td><td><code>SUBAGENTS</code>, <code>getSubagentProfile</code></td><td>11 role profiles + tool allowlists.</td></tr>
+<tr><td><code class="fileref">session/sessionManager.ts</code></td><td><code>SessionManager</code></td><td>Turns, snapshots, persistence, indexing.</td></tr>
+<tr><td><code class="fileref">session/types.ts</code></td><td><code>ChatTurn</code>, <code>Attachment</code>, <code>SessionInfo</code></td><td>Session value types.</td></tr>
+<tr><td><code class="fileref">session/sessionEvents.ts</code></td><td><code>sessionEvents</code></td><td>Cross-webview refresh signal.</td></tr>
+<tr><td><code class="fileref">diffUtils.ts</code></td><td><code>computeSideBySide</code>, <code>hasDiff</code></td><td>Pure diff (LCS + block fallback + gaps).</td></tr>
+<tr><td><code class="fileref">editUtils.ts</code></td><td><code>parseEdits</code>, <code>applyEdits</code></td><td>SEARCH/REPLACE engine.</td></tr>
+<tr><td><code class="fileref">fileManager.ts</code></td><td><code>getProjectTree</code>, <code>getAllFiles</code>, <code>getKeyFiles</code>, …</td><td>Workspace reads + grounding.</td></tr>
+<tr><td><code class="fileref">rulesEngine.ts</code></td><td><code>RulesEngine.getProjectRules</code></td><td>Watches <code>.flash/*.md</code> → enforced rules.</td></tr>
+<tr><td><code class="fileref">secrets.ts</code></td><td><code>SecretStore</code></td><td>SecretStorage + sync cache + migration.</td></tr>
+<tr><td><code class="fileref">storage.ts</code></td><td>key helpers, <code>migrateLegacy</code></td><td>Per-workspace globalState scoping.</td></tr>
+</table>
+
+<!-- ===================== 21 ===================== -->
+<h2 id="extending">21. Extending Flash Code</h2>
+<h3>Add a provider</h3>
+<ol>
+<li>Implement <code>Provider</code> in <code>src/providers/&lt;name&gt;.ts</code> — or reuse <code>OpenAICompatibleProvider</code> for any OpenAI-shaped API.</li>
+<li>Register it in <code>registry.ts</code> with its own <code>poolFor(id)</code> KeyPool.</li>
+<li>Add config (model, base URL) in <code>package.json</code> and a sidebar option.</li>
+<li>Keep wire mapping in pure exported functions (<code>toXMessages</code>) and add a mapper test.</li>
+</ol>
+<pre><code class="language-ts">// registry.ts — reuse the OpenAI-compatible base for a new provider
+this.register(new OpenAICompatibleProvider({
+  id: 'myprovider', label: 'My Provider', keyPool: this.poolFor('myprovider'),
+  baseUrl: () =&gt; 'https://api.example.com/v1',
+  model: () =&gt; cfg().get('myprovider.model') || 'default-model',
+  defaultModel: 'default-model', models: ['default-model'],
+}));</code></pre>
+<h3>Add a tool</h3>
+<p>Declare one <code>ToolDef</code> in <code>core/tools/*</code>. Both transports are generated from it. Execute external programs via <code>ctx.runExec</code> (argv) and validate paths with <code>safeRelPath</code>.</p>
+<pre><code class="language-ts">{
+  name: 'count_lines', category: 'read', mutates: false,
+  description: 'Count the lines in a workspace file.',
+  parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+  handler: async (args, ctx) =&gt; {
+    const p = safeRelPath(reqStr(args, 'path'));
+    const text = await ctx.readFile(p);
+    return `[count_lines ${p}] ${text.split('\n').length} lines`;
+  },
+}</code></pre>
+<h3>Add a subagent</h3>
+<p>Add a profile to <code>SUBAGENTS</code> with a focused system prompt and a <code>tools</code> allowlist (empty = all tools).</p>
+
+<!-- ===================== 22 ===================== -->
+<h2 id="troubleshooting">22. Troubleshooting</h2>
+<table>
+<tr><th>Symptom</th><th>Likely cause / fix</th></tr>
+<tr><td>"I cannot browse the web"</td><td>Request was routed <code>general</code>. The triage prompt now sends web/URL requests to <code>agentic</code>; if it recurs, the model mis-classified — try a stronger model or rephrase.</td></tr>
+<tr><td>Agent stops mid-task</td><td>The completion gate should prevent this; if it still happens, the judge said DONE — tune <code>COMPLETION_JUDGE</code> wording.</td></tr>
+<tr><td><code>list_files</code> repeated</td><td>Dedup/stall guard short-circuits repeats; the tree is also pre-injected. A very weak model may still flail — switch models.</td></tr>
+<tr><td>503 / "fetch failed"</td><td><code>safeFetch</code> retries transient failures across keys; persistent failures mean the provider/endpoint is down or the key is invalid.</td></tr>
+<tr><td>Gemini 400 "thought_signature"</td><td>Fixed — Gemini provider replays <code>thoughtSignature</code>. Ensure you're on v2.3.0.</td></tr>
+<tr><td>Diff not shown</td><td>Diffs render as their own card; a "Diff render error" card surfaces any failure (copy the message).</td></tr>
+<tr><td>Keys not saving</td><td>Keys go to Secret Storage via the sidebar gear or "Manage API Keys" — not settings.json.</td></tr>
+</table>
+
+<!-- ===================== 23 ===================== -->
+<h2 id="glossary">23. Glossary</h2>
+<table>
+<tr><td><b>AgentEvent</b></td><td>Engine→host event union (status, prose, tool_*, diff, spawn, …).</td></tr>
+<tr><td><b>StreamEvent</b></td><td>Normalized provider stream item (text / thinking / tool_call / usage / finish).</td></tr>
+<tr><td><b>ToolContext</b></td><td>Interface giving tools host capabilities without importing <code>vscode</code>.</td></tr>
+<tr><td><b>KeyPool</b></td><td>Round-robin key leasing with cooldown, RPM pacing, and retry.</td></tr>
+<tr><td><b>Completion gate</b></td><td>Pre-stop check that the objective is met, with hard caps.</td></tr>
+<tr><td><b>Route</b></td><td>Triage outcome: general / codebase / agentic.</td></tr>
+<tr><td><b>Plan gate</b></td><td>Blocks file mutations in plan mode (except .md/.flash).</td></tr>
+</table>
+
+<!-- ===================== 24 ===================== -->
+<h2 id="appendix">24. Appendix — Config &amp; Commands</h2>
+<h4>Settings (<code>flashCode.*</code>)</h4>
+<table>
+<tr><th>Key</th><th>Meaning</th></tr>
+<tr><td><code>provider</code></td><td>Active provider</td></tr>
+<tr><td><code>&lt;provider&gt;.model</code></td><td>Model per provider</td></tr>
+<tr><td><code>customModels</code></td><td>Per-provider custom model IDs (sidebar-managed)</td></tr>
+<tr><td><code>mode</code></td><td>ask · auto-edit · plan · autonomous</td></tr>
+<tr><td><code>effort</code></td><td>low → max (token/thinking budget)</td></tr>
+<tr><td><code>autoApprove</code></td><td>Skip command/script approval (off by default)</td></tr>
+<tr><td><code>rateLimit.requestsPerMinute</code></td><td>Global RPM cap across a provider's keys</td></tr>
+<tr><td><code>ollama.url / .model / .numCtx</code></td><td>Local Ollama config</td></tr>
+</table>
+<h4>Commands</h4>
+<table>
+<tr><td><code>flashCode.open</code></td><td>Open the chat panel (<kbd>Ctrl/Cmd+Shift+A</kbd>)</td></tr>
+<tr><td><code>flashCode.newChat</code></td><td>New session</td></tr>
+<tr><td><code>flashCode.openDashboard</code></td><td>Mission Control</td></tr>
+<tr><td><code>flashCode.switchProvider</code> / <code>switchModel</code> / <code>manageKeys</code></td><td>Provider / model / key management</td></tr>
+<tr><td><code>flashCode.sendFile</code></td><td>Attach the active file</td></tr>
+</table>
+
+<footer>⚡ Flash Code Developer Guide · v2.3.0 · MIT · Generated for contributors. For the quick reference see <code>docs/DEVELOPER_GUIDE.md</code>.</footer>
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+  // Mermaid (dark, Flash Code accent)
+  if (window.mermaid) mermaid.initialize({ startOnLoad: true, theme: 'dark', themeVariables: {
+    primaryColor:'#1c2128', primaryBorderColor:'#4ea1ff', primaryTextColor:'#c9d1d9',
+    lineColor:'#8b949e', fontFamily:'Inter, sans-serif', fontSize:'14px'
+  }});
+  if (window.hljs) hljs.highlightAll();
+
+  // Charts
+  const C = { grid:'#30363d', text:'#8b949e', accent:'#4ea1ff', accent2:'#a371f7', green:'#3fb950', yellow:'#d29922', red:'#f85149' };
+  function ready(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded',fn); }
+  ready(function(){
+    if(!window.Chart) return;
+    Chart.defaults.color = C.text; Chart.defaults.borderColor = C.grid; Chart.defaults.font.family = 'Inter';
+    new Chart(document.getElementById('locChart'), { type:'bar', data:{
+      labels:['core','providers','host','root-utils','prompts','session'],
+      datasets:[{ label:'Lines of code', data:[1018,897,633,506,164,151],
+        backgroundColor:[C.accent,C.accent2,C.green,C.yellow,'#58a6ff','#db61a2'], borderRadius:6 }]},
+      options:{ plugins:{legend:{display:false}}, scales:{ y:{grid:{color:C.grid}}, x:{grid:{display:false}} } } });
+    new Chart(document.getElementById('compChart'), { type:'doughnut', data:{
+      labels:['Engine (core+providers+prompts)','Host','Domain utils + session'],
+      datasets:[{ data:[2079,633,657], backgroundColor:[C.accent,C.green,C.accent2], borderColor:'#0d1117', borderWidth:3 }]},
+      options:{ plugins:{legend:{position:'bottom'}}, cutout:'60%' } });
+    new Chart(document.getElementById('testChart'), { type:'doughnut', data:{
+      labels:['editUtils/diffUtils','keyPool','providers','agentLoop','session/secrets','triage/prompts','tools'],
+      datasets:[{ data:[15,7,8,9,7,9,11], backgroundColor:[C.accent,C.green,C.accent2,C.yellow,'#58a6ff','#db61a2','#3fb950'], borderColor:'#0d1117', borderWidth:3 }]},
+      options:{ plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}}}, cutout:'55%' } });
+  });
+
+  // Scrollspy
+  const links = [...document.querySelectorAll('nav.toc a')];
+  const map = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+  const obs = new IntersectionObserver((es) => {
+    es.forEach(e => { if(e.isIntersecting){ links.forEach(l=>l.classList.remove('active')); const a=map.get(e.target.id); if(a)a.classList.add('active'); } });
+  }, { rootMargin:'-10% 0px -80% 0px' });
+  document.querySelectorAll('main h2[id]').forEach(h => obs.observe(h));
+</script>
+</body>
+</html>

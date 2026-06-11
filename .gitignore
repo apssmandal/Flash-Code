@@ -1,5 +1,8 @@
 node_modules/
 out/
+dist/
+media/dist/
+coverage/
 .vscode-test/
 *.vsix
 .vsce
@@ -10,5 +13,7 @@ brain/
 scratch/
 .flash-worktrees/
 Future_Plan.md
-Prompts/
 .agent_work/
+*.log
+.env
+.env.*

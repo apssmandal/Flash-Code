@@ -21,6 +21,7 @@ export function sessionsKey(): string { return 'fc.sessions::' + wsKey(); }
 export function chatKey(id: string): string { return 'fc.chat::' + wsKey() + '::' + id; }
 export function summaryKey(id: string): string { return 'fc.summary::' + wsKey() + '::' + id; }
 export function lastKey(): string { return 'fc.last::' + wsKey(); }
+export function usageKey(): string { return 'fc.usage::' + wsKey(); }
 
 /**
  * Migrates workspace-scoped legacy 'ca.' sessions/chats to new 'fc.' keys.
